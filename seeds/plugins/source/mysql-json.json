@@ -1,0 +1,27 @@
+{
+  "name": "mysql-json",
+  "db": "MySQL",
+  "type": "source",
+  "format": "JSON",
+  "description": "Debezium MySQL source. Captures INSERT/UPDATE/DELETE into Kafka topics as JSON.",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "database.history.kafka.bootstrap.servers": "*******",
+    "database.history.kafka.topic": "*******",
+    "database.hostname": "*******",
+    "database.include.list": "*******",
+    "database.password": "*******",
+    "database.port": "3306",
+    "database.server.id": "*******",
+    "database.server.name": "*******",
+    "database.user": "*******",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "true",
+    "schema.history.internal.kafka.topic": "schema-changes.mysql",
+    "table.include.list": "*******",
+    "tasks.max": "1",
+    "topic.prefix": "*******",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "true"
+}
+}

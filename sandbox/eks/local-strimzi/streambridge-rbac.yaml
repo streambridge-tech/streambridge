@@ -1,0 +1,43 @@
+# ServiceAccount + RBAC + a long-lived token for StreamBridge to manage
+# KafkaConnector objects in the `kafka` namespace. This is the same shape of
+# credential you would create on EKS (a namespaced SA token, not kubeconfig/IAM).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: streambridge
+  namespace: kafka
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: streambridge-connectors
+  namespace: kafka
+rules:
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkaconnectors", "kafkaconnectors/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: streambridge-connectors
+  namespace: kafka
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: streambridge-connectors
+subjects:
+  - kind: ServiceAccount
+    name: streambridge
+    namespace: kafka
+---
+# K8s 1.24+ no longer auto-creates SA token Secrets; create one explicitly so
+# StreamBridge has a non-expiring bearer token (EKS needs the same approach).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: streambridge-token
+  namespace: kafka
+  annotations:
+    kubernetes.io/service-account.name: streambridge
+type: kubernetes.io/service-account-token

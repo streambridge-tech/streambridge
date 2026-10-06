@@ -1,0 +1,77 @@
+/* Generic second sidebar: width, row spacing, collapse, dock left/right, resize. */
+
+.conn-tree-layout .conn-tree-sidebar,
+#schemaTreeSidebar,
+#kafkaTreeSidebar {
+  width: 280px;
+  min-width: 180px;
+  max-width: 560px;
+  transition: width 0.18s ease;
+}
+/* Match first sidebar (.rail-label): 13px Inter, 9px gap between icon and name. */
+.conn-tree-group-hdr,
+.conn-tree-group-name,
+.conn-tree-item,
+.conn-tree-item-name {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.011em;
+}
+.conn-tree-group-hdr {
+  display: flex; align-items: center; gap: 9px;
+  margin: 1px 6px; padding: 4px 10px;
+  min-height: 28px; border-radius: 8px;
+  color: var(--text);
+}
+.conn-tree-item {
+  display: flex; align-items: center; gap: 9px;
+  margin: 1px 6px; padding: 4px 10px;
+  min-height: 28px; border-radius: 8px;
+  color: var(--text);
+}
+.conn-tree-item-icon {
+  width: 16px; height: 16px;
+}
+.conn-tree-item-icon svg { width: 16px; height: 16px; }
+.conn-tree-item-name { font-size: 13px; }
+
+.conn-tree-nav-btn {
+  width: 22px; height: 22px; padding: 0; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text2); cursor: pointer;
+}
+.conn-tree-nav-btn:hover { background: var(--surface2); color: var(--text); }
+.conn-tree-nav-btn svg {
+  width: 12px; height: 12px; stroke: currentColor; fill: none;
+  stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.conn-tree-layout.nav-collapsed .conn-tree-sidebar { width: 44px; min-width: 44px; }
+.conn-tree-layout.nav-collapsed .conn-tree-search-wrap,
+.conn-tree-layout.nav-collapsed .conn-tree-new-btn,
+.conn-tree-layout.nav-collapsed .conn-tree-icon-btn,
+.conn-tree-layout.nav-collapsed .conn-tree-body,
+.conn-tree-layout.nav-collapsed .conn-tree-resizer { display: none; }
+.conn-tree-layout.nav-collapsed .conn-tree-toolbar { flex-direction: column; padding: 8px 0; border-bottom: none; gap: 6px; }
+.conn-tree-layout.nav-collapsed [data-tree-pane="collapse"] { margin: 0 auto; transform: rotate(180deg); }
+
+.conn-tree-layout.nav-right { flex-direction: row-reverse; }
+.conn-tree-layout.nav-right .conn-tree-sidebar {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+.conn-tree-resizer {
+  width: 6px; flex-shrink: 0; cursor: col-resize; background: transparent;
+  position: relative; z-index: 2;
+}
+.conn-tree-resizer::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px;
+  background: var(--border); transition: background 0.15s;
+}
+.conn-tree-resizer:hover::after,
+.conn-tree-resizer.dragging::after { background: var(--blue); }
+body.tree-pane-resizing { cursor: col-resize; user-select: none; }
+body.tree-pane-resizing .conn-tree-sidebar { transition: none; }

@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 780" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="solid" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2f6fed"/>
+    </marker>
+    <marker id="dash" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2e9e4f"/>
+    </marker>
+    <marker id="dashrev" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M8,0 L0,3 L8,6 Z" fill="#2e9e4f"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="780" fill="#ffffff"/>
+  <text x="500" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#14213d">StreamBridge — Control Plane for Kafka-Connect CDC</text>
+
+  <!-- ===================== DATA-PLANE ARROWS (dashed, behind boxes) ===================== -->
+  <!-- Sources -> Kafka Connect (CDC) : left corridor x~305 -->
+  <path d="M250,185 C305,230 305,470 300,555" fill="none" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)" opacity="0.85"/>
+  <text x="318" y="330" font-size="12.5" fill="#2e7d43" font-weight="600">CDC</text>
+  <!-- Kafka Connect <-> Schema Registry (schemas) -->
+  <path d="M150,560 L150,445" fill="none" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)" marker-start="url(#dashrev)"/>
+  <text x="160" y="508" font-size="12.5" fill="#2e7d43" font-weight="600">schemas</text>
+  <!-- Kafka Connect -> Destinations (load) : bottom lane -->
+  <path d="M345,650 L675,650" fill="none" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)"/>
+  <text x="500" y="640" text-anchor="middle" font-size="12.5" fill="#2e7d43" font-weight="600">load</text>
+
+  <!-- ===================== MANAGEMENT ARROWS (solid, from hub) ===================== -->
+  <!-- hub -> Sources -->
+  <path d="M362,312 L280,170" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
+  <text x="300" y="250" font-size="12.5" fill="#1f4fb0" font-weight="600">manage</text>
+  <!-- hub -> Schema Registry -->
+  <path d="M340,370 L258,372" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
+  <text x="270" y="356" font-size="12.5" fill="#1f4fb0" font-weight="600">read</text>
+  <!-- hub -> Kafka Connect -->
+  <path d="M368,452 L300,556" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
+  <text x="300" y="512" font-size="12.5" fill="#1f4fb0" font-weight="600">deploy + status</text>
+  <!-- hub -> Destinations -->
+  <path d="M636,452 L706,556" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
+  <text x="648" y="512" font-size="12.5" fill="#1f4fb0" font-weight="600">manage</text>
+  <!-- hub -> Alerting -->
+  <path d="M640,318 L724,186" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
+  <text x="690" y="258" font-size="12.5" fill="#1f4fb0" font-weight="600">notify</text>
+
+  <!-- ===================== CENTER HUB ===================== -->
+  <rect x="350" y="288" width="300" height="192" rx="16" fill="#2f6fed" stroke="#1b3f8f" stroke-width="2"/>
+  <!-- brand mark -->
+  <g transform="translate(476,300) scale(1.45)">
+    <circle cx="5.2" cy="16" r="2.15" fill="#fff"/>
+    <path d="M8.2 16Q11.5 6 13.4 16Q15.5 26 18.2 16" fill="none" stroke="#fff" stroke-width="2.05" stroke-linecap="round"/>
+    <path d="M20.2 10.5 28.2 16 20.2 21.5" fill="none" stroke="#fff" stroke-width="2.45" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="500" y="372" text-anchor="middle" font-size="19" font-weight="700" fill="#ffffff">StreamBridge</text>
+  <line x1="384" y1="386" x2="616" y2="386" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1"/>
+  <text x="500" y="408" text-anchor="middle" font-size="12.5" fill="#eaf1ff">Author · validate · deploy</text>
+  <text x="500" y="428" text-anchor="middle" font-size="12.5" fill="#eaf1ff">REST or Strimzi / Kubernetes</text>
+  <text x="500" y="448" text-anchor="middle" font-size="12.5" fill="#eaf1ff">Vaults · RBAC · audit</text>
+  <text x="500" y="468" text-anchor="middle" font-size="12.5" fill="#eaf1ff">Browse topics &amp; schemas · alerts</text>
+
+  <!-- ===================== SOURCES (top-left) ===================== -->
+  <rect x="40" y="56" width="250" height="132" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
+  <g transform="translate(60,74)" fill="none" stroke="#5b6672" stroke-width="2">
+    <ellipse cx="9" cy="4" rx="9" ry="3.4" fill="#dfe4ea"/>
+    <path d="M0,4 V16 a9,3.4 0 0 0 18,0 V4"/>
+    <path d="M0,10 a9,3.4 0 0 0 18,0"/>
+  </g>
+  <text x="90" y="82" font-size="15" font-weight="700" fill="#14213d">Sources · 1..N</text>
+  <text x="60" y="112" font-size="12.5" fill="#3a4350">MySQL · PostgreSQL</text>
+  <text x="60" y="132" font-size="12.5" fill="#3a4350">Oracle · MongoDB · …</text>
+  <text x="60" y="160" font-size="11.5" fill="#79838f">row changes captured by</text>
+  <text x="60" y="176" font-size="11.5" fill="#79838f">Debezium source connectors</text>
+
+  <!-- ===================== SCHEMA REGISTRY (left) ===================== -->
+  <rect x="40" y="300" width="218" height="132" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
+  <g transform="translate(60,318)" stroke="#5b6672" stroke-width="2" fill="#dfe4ea">
+    <rect x="6" y="0" width="10" height="7" rx="1.5"/>
+    <rect x="0" y="18" width="10" height="7" rx="1.5"/>
+    <rect x="13" y="18" width="10" height="7" rx="1.5"/>
+    <path d="M11,7 V12 M4,18 V12 H18 V18" fill="none"/>
+  </g>
+  <text x="92" y="330" font-size="15" font-weight="700" fill="#14213d">Schema Registry</text>
+  <text x="92" y="348" font-size="12" fill="#79838f">1..N</text>
+  <text x="60" y="380" font-size="12.5" fill="#3a4350">Confluent</text>
+  <text x="60" y="400" font-size="12.5" fill="#3a4350">Apicurio</text>
+  <text x="60" y="422" font-size="11.5" fill="#79838f">Avro schemas</text>
+
+  <!-- ===================== KAFKA CONNECT + KAFKA (bottom-left, data plane) ===================== -->
+  <rect x="40" y="560" width="305" height="150" rx="12" fill="#e9f9ee" stroke="#2e9e4f" stroke-width="1.8"/>
+  <g transform="translate(60,580)" stroke="#2e7d43" stroke-width="2" fill="none">
+    <circle cx="9" cy="9" r="7"/>
+    <circle cx="9" cy="9" r="2.4" fill="#2e7d43"/>
+    <path d="M9,0 V3 M9,15 V18 M0,9 H3 M15,9 H18 M3,3 l2,2 M15,15 l-2,-2 M15,3 l-2,2 M3,15 l2,-2"/>
+  </g>
+  <text x="90" y="592" font-size="15" font-weight="700" fill="#1c5b32">Kafka Connect + Kafka</text>
+  <text x="60" y="620" font-size="12.5" fill="#28492f">Connect workers · Debezium · sink plugins</text>
+  <text x="60" y="642" font-size="12.5" fill="#28492f">Kafka topics</text>
+  <text x="60" y="672" font-size="11.5" fill="#5b7a63">The data plane — StreamBridge</text>
+  <text x="60" y="688" font-size="11.5" fill="#5b7a63">drives it but is never in the path</text>
+
+  <!-- ===================== DESTINATIONS (bottom-right) ===================== -->
+  <rect x="680" y="560" width="280" height="150" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
+  <g transform="translate(700,582)" stroke="#5b6672" stroke-width="2" fill="#dfe4ea">
+    <path d="M4,14 a5,5 0 0 1 1,-9.8 a6,6 0 0 1 11.5,1.6 a4.2,4.2 0 0 1 -1.2,8.2 Z"/>
+  </g>
+  <text x="730" y="594" font-size="15" font-weight="700" fill="#14213d">Destinations · 1..N</text>
+  <text x="700" y="624" font-size="12.5" fill="#3a4350">Amazon S3 · Snowflake</text>
+  <text x="700" y="644" font-size="12.5" fill="#3a4350">Elasticsearch · Warehouse</text>
+  <text x="700" y="674" font-size="11.5" fill="#79838f">written by sink connectors</text>
+
+  <!-- ===================== ALERTING (top-right) ===================== -->
+  <rect x="710" y="56" width="250" height="132" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
+  <g transform="translate(730,74)" stroke="#5b6672" stroke-width="2" fill="none">
+    <path d="M2,14 C2,7 5,3 9,3 C13,3 16,7 16,14 Z" fill="#dfe4ea"/>
+    <path d="M7,17 a2,2 0 0 0 4,0"/>
+  </g>
+  <text x="760" y="82" font-size="15" font-weight="700" fill="#14213d">Alerting</text>
+  <text x="730" y="112" font-size="12.5" fill="#3a4350">Slack</text>
+  <text x="730" y="132" font-size="12.5" fill="#3a4350">Google Chat</text>
+  <text x="730" y="160" font-size="11.5" fill="#79838f">connector policy</text>
+  <text x="730" y="176" font-size="11.5" fill="#79838f">notifications</text>
+
+  <!-- ===================== LEGEND ===================== -->
+  <line x1="330" y1="744" x2="372" y2="744" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
+  <text x="380" y="748" font-size="12.5" fill="#3a4350">StreamBridge manages / observes</text>
+  <line x1="628" y1="744" x2="670" y2="744" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)"/>
+  <text x="678" y="748" font-size="12.5" fill="#3a4350">data flows through Kafka Connect</text>
+</svg>

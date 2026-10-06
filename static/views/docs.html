@@ -1,0 +1,16 @@
+<div class="view active docs-view" id="view-docs">
+  <aside class="docs-sidebar" aria-label="Documentation topics">
+    <div class="docs-nav-heading">
+      <strong>Documentation</strong>
+      <button type="button" id="docsMenu" aria-expanded="false" aria-controls="docsNav">Topics</button>
+    </div>
+    <label class="docs-search-label" for="docsSearch">Search documentation</label>
+    <input type="search" id="docsSearch" placeholder="Search topics and examples" autocomplete="off">
+    <nav id="docsNav" aria-label="Topics"></nav>
+    <p id="docsEmpty" role="status" hidden>No matching topics.</p>
+  </aside>
+  <div class="docs-reading" id="docsReading">
+    <article id="docsContent" aria-label="Documentation article"></article>
+    <p class="docs-status" id="docsStatus" role="status" aria-live="polite"></p>
+  </div>
+</div>

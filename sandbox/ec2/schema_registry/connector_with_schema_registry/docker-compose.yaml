@@ -1,0 +1,144 @@
+version: '2.1'
+services:
+  zookeeper:
+    image: debezium/zookeeper:1.8.1.Final
+    ports:
+     - 2181:2181
+     - 2888:2888
+     - 3888:3888
+    networks:
+      - streambridge
+  kafka:
+    image: debezium/kafka:1.8.1.Final
+    hostname: kafka
+    ports:
+     - 9093:29092
+    links:
+     - zookeeper
+    environment:
+     - ZOOKEEPER_CONNECT=zookeeper:2181
+     - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
+     - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9093
+     - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+     - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    networks:
+      - streambridge
+  connect:
+    image: debezium/connect:1.8.1.Final
+    ports:
+      - 8083:8083
+    links:
+      - kafka
+    volumes:
+      - ./debezium_plugins/secrets:/secrets
+      - ./debezium_plugins/smt:/kafka/connect/debezium-connector-mysql/smt
+      - ./debezium_plugins/mongodb-kafka-connect-mongodb-1.7.0:/kafka/connect/mongodb-kafka-connect-mongodb-1.7.0
+      - ./debezium_plugins/debezium-connector-jdbc:/kafka/connect/debezium-connector-jdbc
+      - ./debezium_plugins/apicurio-registry-distro-connect-converter:/kafka/connect/apicurio-registry-distro-connect-converter
+      - ./debezium_plugins/aiven-s3-sink:/kafka/connect/aiven-s3-sink
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+      - CONNECT_CONFIG_PROVIDERS=file
+      - CONNECT_CONFIG_PROVIDERS_FILE_CLASS=org.apache.kafka.common.config.provider.FileConfigProvider
+    networks:
+      - streambridge
+  mysql:
+    image: debezium/example-mysql:1.8.1.Final
+    container_name: mysql-cdc
+    ports:
+     - 3000:3306
+    environment:
+     - MYSQL_ROOT_PASSWORD=debezium
+     - MYSQL_USER=mysqluser
+     - MYSQL_PASSWORD=mysqlpw
+    networks:
+      - streambridge
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:0.3.3
+    container_name: kafka-ui
+    ports:
+      - "9021:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY:  http://registry:8080/apis/registry/v3
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: local
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
+    depends_on:
+      - zookeeper
+      - kafka
+    networks:
+      - streambridge
+
+  registry:
+    image: apicurio/apicurio-registry:latest-snapshot
+    container_name: apicurio-registry
+    ports:
+      - "8080:8080"
+    networks:
+      - streambridge
+
+  confluent-registry:
+    image: confluentinc/cp-schema-registry:6.2.15
+    platform: linux/amd64
+    container_name: confluent-registry
+    hostname: schema-registry
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    networks:
+      - streambridge
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+
+
+  registry-ui:
+    image: apicurio/apicurio-registry-ui:latest-snapshot
+    container_name: apicurio-registry-ui
+    ports:
+      - "8888:8080"
+    depends_on:
+      - registry
+    networks:
+      - streambridge
+
+  s3mock:
+    image: adobe/s3mock:latest
+    container_name: s3mock
+    ports:
+      - "9090:9090"
+    environment:
+      - initialBuckets=streambridge-sink
+      - debug=true
+    networks:
+      - streambridge
+
+  s3ui:
+    image: cloudlena/s3manager:latest
+    container_name: s3manager
+    ports:
+      - "9092:8080"
+    environment:
+      - ENDPOINT=s3mock:9090
+      - ACCESS_KEY_ID=foo
+      - SECRET_ACCESS_KEY=bar
+      - USE_SSL=false
+      - REGION=us-east-1
+    depends_on:
+      - s3mock
+    networks:
+      - streambridge
+
+networks:
+  streambridge:
+    external: true
+    name: streambridge-network

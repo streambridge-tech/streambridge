@@ -1,0 +1,121 @@
+<!-- ════ PLUGINS VIEW ════ -->
+<div class="view" id="view-plugins">
+  <div class="conn-tree-layout">
+
+    <!-- Left sidebar -->
+    <div class="conn-tree-sidebar" id="pluginsSidebar">
+      <div class="conn-tree-toolbar">
+        <div class="conn-tree-search-wrap">
+          <svg class="conn-tree-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="conn-tree-search" placeholder="Search plugins…" oninput="filterPlugins(this.value)">
+        </div>
+        <button class="conn-tree-new-btn" onclick="openPluginModal()" title="New Plugin">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+
+      </div>
+      <div class="conn-tree-body" id="pluginsListBody"></div>
+    </div>
+    <div class="conn-tree-resizer" data-tree-pane="resize" role="separator" aria-orientation="vertical" aria-label="Resize list"></div>
+
+    <!-- Right detail panel -->
+    <div class="conn-tree-detail" id="pluginDetail">
+      <div class="plugin-empty-state">
+        <div class="plugin-empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        </div>
+        <div class="plugin-empty-title">Connector library</div>
+        <div class="plugin-empty-sub">Built-in Kafka Connect templates load here. Pick one to see when to use it.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════ NEW PLUGIN MODAL ════ -->
+<div id="pluginModal" onclick="pluginModalBgClick(event)" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.45);overflow:auto;backdrop-filter:blur(2px);">
+  <div class="pm-box" onclick="event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="pm-header">
+      <div class="pm-header-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <div class="pm-header-text">
+        <div id="pluginModalTitle" class="pm-title">Add Custom Plugin</div>
+        <div id="pluginModalSubtitle" class="pm-subtitle">Save a connector config as a reusable plugin</div>
+      </div>
+      <button onclick="closePluginModal()" class="pm-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="pm-body">
+
+      <!-- Row 1: Name -->
+      <div class="pm-row">
+        <div class="pm-field">
+          <label class="pm-label">Plugin Name <span class="pm-required">*</span></label>
+          <input class="pm-input" id="pluginFormName" placeholder="e.g. my-postgres-source" autocomplete="off" spellcheck="false">
+          <span class="pm-hint">Lowercase letters, numbers and hyphens only</span>
+        </div>
+      </div>
+
+      <!-- Row 2: Type + Format dropdowns -->
+      <div class="pm-row">
+        <div class="pm-field">
+          <label class="pm-label">Type <span class="pm-required">*</span></label>
+          <div class="pm-select-wrap">
+            <select class="pm-select" id="pluginFormType">
+              <option value="source">Source</option>
+              <option value="sink">Sink</option>
+            </select>
+            <svg class="pm-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">Format <span class="pm-required">*</span></label>
+          <div class="pm-select-wrap">
+            <select class="pm-select" id="pluginFormFormat">
+              <option value="JSON">JSON</option>
+              <option value="AVRO">AVRO</option>
+            </select>
+            <svg class="pm-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Description -->
+      <div class="pm-field" style="width:100%;">
+        <label class="pm-label">Description</label>
+        <input class="pm-input" id="pluginFormDesc" placeholder="What does this connector do? (optional)">
+      </div>
+
+      <!-- Row 4: JSON editor -->
+      <div class="pm-field" style="width:100%;">
+        <label class="pm-label">Connector Config <span class="pm-required">*</span></label>
+        <div class="pm-editor-wrap">
+          <div class="pm-editor-bar">
+            <span class="pm-editor-filename">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              config.json
+            </span>
+            <span class="pm-editor-hint">Flat key-value JSON object</span>
+          </div>
+          <textarea class="pm-editor-area" id="pluginFormJson" spellcheck="false" placeholder='{"connector.class": "io.debezium.connector.mysql.MySqlConnector",&#10; "database.hostname": "{prod.DB_HOST}",&#10; "database.password": "{prod.DB_PASSWORD}",&#10; "tasks.max": "1"}'></textarea>
+        </div>
+        <span class="pm-hint">Create secrets on Connections, then use tokens here like {prod.DB_PASSWORD}.</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="pm-footer">
+      <button class="pm-btn-cancel" onclick="closePluginModal()">Cancel</button>
+      <button class="pm-btn-save" onclick="savePlugin()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Plugin
+      </button>
+    </div>
+  </div>
+</div>

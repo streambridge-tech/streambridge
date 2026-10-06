@@ -1,0 +1,32 @@
+{
+        "name": "mysql-apicurio-001",
+        "config": {
+                "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+                "tasks.max": "1",
+                "database.hostname": "mysql",
+                "database.port": "3306",
+                "database.user": "root",
+                "database.password": "debezium",
+                "database.server.id": "1234",
+                "database.server.name": "apicurio",
+                "database.whitelist": "inventory",
+                "table.whitelist": "inventory.*",
+                "database.history.kafka.bootstrap.servers": "kafka:9092",
+                "database.history.kafka.topic": "mysqlhost-schema",
+                "key.converter": "io.apicurio.registry.utils.converter.AvroConverter",
+                "key.converter.apicurio.registry.url": "http://registry:8080",
+                "key.converter.apicurio.registry.auto-register": "true",
+                "key.converter.apicurio.registry.find-latest": "true",
+                "value.converter": "io.apicurio.registry.utils.converter.AvroConverter",
+                "value.converter.apicurio.registry.url": "http://registry:8080",
+                "value.converter.apicurio.registry.auto-register": "true",
+                "value.converter.apicurio.registry.find-latest": "true",
+                "value.converter.apicurio.registry.as-confluent": true ,
+                "transforms": "unwrap",
+                "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+                "transforms.unwrap.drop.tombstones": false,
+                "transforms.unwrap.delete.handling.mode": "drop",
+                "predicates": "isTombstone",
+                "predicates.isTombstone.type": "org.apache.kafka.connect.transforms.predicates.RecordIsTombstone"
+        }
+    }

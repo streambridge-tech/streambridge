@@ -1,0 +1,136 @@
+"""MySQL source connection schema."""
+
+from app.connectors.schemas.base import FieldDef, Schema
+
+
+MYSQL_SCHEMA = Schema(
+    subtype="mysql",
+    label="MySQL",
+    fields=(
+        # ── Required: connection identity ──────────────────────────────────
+        FieldDef(
+            id="host",
+            label="Host",
+            kc_key="database.hostname",
+            test_key="host",
+            importance="required",
+            placeholder="e.g. db.internal",
+            doc="IP address or DNS name of the MySQL server.",
+            group="connection", order=10,
+        ),
+        FieldDef(
+            id="port",
+            label="Port",
+            kc_key="database.port",
+            test_key="port",
+            type="number",
+            cast=int,
+            default=3306,
+            importance="required",
+            placeholder="3306",
+            doc="TCP port for the MySQL server.",
+            group="connection", order=20,
+        ),
+        FieldDef(
+            id="database",
+            label="Database",
+            kc_key="database.include.list",
+            # pymysql doesn't need a DB to connect (we test without one and let
+            # the CDC filter run at Debezium time). Keep test_key=None.
+            test_key=None,
+            importance="required",
+            placeholder="orders",
+            doc="MySQL schema/database that Debezium will replicate. Comma-separated for multiple.",
+            group="connection", order=30,
+        ),
+        FieldDef(
+            id="username",
+            label="Username",
+            kc_key="database.user",
+            test_key="user",
+            importance="required",
+            placeholder="debezium",
+            default="debezium",
+            doc="MySQL user. Needs REPLICATION CLIENT + REPLICATION SLAVE + SELECT on target tables.",
+            group="connection", order=40,
+        ),
+        FieldDef(
+            id="password",
+            label="Password",
+            kc_key="database.password",
+            test_key="password",
+            type="password",
+            secret=True,
+            importance="required",
+            placeholder="••••••••",
+            doc="Password for the MySQL user.",
+            group="connection", order=50,
+        ),
+
+        # ── Advanced: TLS / SSL ───────────────────────────────────────────
+        FieldDef(
+            id="ssl_mode",
+            label="SSL Mode",
+            kc_key="database.ssl.mode",
+            # pymysql handles SSL via a dict param; we skip test-key mapping.
+            test_key=None,
+            type="enum",
+            options=("disabled", "preferred", "required", "verify_ca", "verify_identity"),
+            importance="advanced",
+            default="preferred",
+            doc="Managed clouds usually require 'required' or stricter.",
+            group="tls", order=10,
+        ),
+        FieldDef(
+            id="ssl_truststore",
+            label="SSL CA Bundle",
+            kc_key="database.ssl.truststore",
+            test_key=None,
+            importance="advanced",
+            placeholder="/etc/ssl/mysql-ca.crt",
+            doc="Path to the CA cert bundle used to verify the server (path must be readable by both StreamBridge and Kafka Connect).",
+            group="tls", order=20,
+        ),
+
+        # ── Advanced: replication / tuning ────────────────────────────────
+        FieldDef(
+            id="server_id",
+            label="Server ID",
+            kc_key="database.server.id",
+            test_key=None,
+            type="number",
+            cast=int,
+            default=184054,
+            importance="advanced",
+            placeholder="184054",
+            doc="Unique numeric ID Debezium uses to register as a MySQL replica. Must be unique across all replicas.",
+            group="tuning", order=10,
+        ),
+        FieldDef(
+            id="connect_timeout_ms",
+            label="Connect Timeout (ms)",
+            kc_key="database.connect.timeout.ms",
+            test_key="connect_timeout",
+            test_transform=lambda ms: max(1, int(ms) // 1000),
+            type="number",
+            cast=int,
+            default=30000,
+            importance="advanced",
+            placeholder="30000",
+            doc="Milliseconds to wait for the initial TCP handshake before failing.",
+            group="tuning", order=20,
+        ),
+        FieldDef(
+            id="allow_public_key_retrieval",
+            label="Allow Public Key Retrieval",
+            kc_key="database.allowPublicKeyRetrieval",
+            test_key=None,
+            type="boolean",
+            importance="advanced",
+            default=True,
+            doc="Required when the MySQL server uses 'caching_sha2_password' authentication (MySQL 8+ default).",
+            cast=lambda v: "true" if str(v).lower() in ("true", "1", "yes", "on") else "false",
+            group="tuning", order=30,
+        ),
+    ),
+)

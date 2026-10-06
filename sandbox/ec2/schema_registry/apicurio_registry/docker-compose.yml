@@ -1,0 +1,14 @@
+services:
+  registry:
+    image: apicurio/apicurio-registry:latest-snapshot
+    container_name: apicurio-registry
+    ports:
+      - "8080:8080"
+
+  registry-ui:
+    image: apicurio/apicurio-registry-ui:latest-snapshot
+    container_name: apicurio-registry-ui
+    ports:
+      - "8888:8080"
+    depends_on:
+      - registry

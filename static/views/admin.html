@@ -1,0 +1,94 @@
+<!-- ════ ACCESS CONTROL VIEW ════ -->
+<div class="view" id="view-admin" style="flex-direction:row;">
+
+  <!-- Gate: shown when the signed-in user lacks admin permissions -->
+  <div id="adminNoAccess" class="ac-gate" style="display:none;">
+    <div class="ac-gate-card">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <h2>Access Control is restricted</h2>
+      <p>You need the <code>Manage users</code> or <code>Manage roles</code> permission.</p>
+    </div>
+  </div>
+
+  <div id="adminApp" class="ac-shell" style="display:none;">
+
+    <!-- Main (section chosen from the rail's Access Control group) -->
+    <div class="ac-main">
+
+      <!-- USERS -->
+      <section class="ac-section" id="acUsers">
+        <div class="ac-bar">
+          <div class="ac-bar-title">Users</div>
+          <input id="userSearch" class="ac-search" type="text" placeholder="Search users…">
+          <button class="ac-btn ac-btn-primary" id="newUserBtn">New user</button>
+        </div>
+        <div class="ac-table-wrap">
+          <table class="ac-table">
+            <thead>
+              <tr><th>Username</th><th>Roles</th><th>Status</th><th class="ac-col-actions">Actions</th></tr>
+            </thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ROLES -->
+      <section class="ac-section" id="acRoles" style="display:none;">
+
+        <!-- List view -->
+        <div id="roleListView" class="ac-subview">
+          <div class="ac-bar">
+            <div class="ac-bar-title">Roles</div>
+            <button class="ac-btn ac-btn-primary" id="newRoleBtn">Add role</button>
+          </div>
+          <div class="ac-subbar">
+            <span class="ac-count" id="roleCount">0 roles</span>
+            <input id="roleSearch" class="ac-search" type="text" placeholder="Search roles…">
+          </div>
+          <div class="ac-table-wrap">
+            <table class="ac-table">
+              <thead>
+                <tr>
+                  <th>Role name</th>
+                  <th>Description</th>
+                  <th>Inherits from</th>
+                  <th>Granted to</th>
+                  <th>Users</th>
+                  <th>Created</th>
+                  <th class="ac-col-actions"></th>
+                </tr>
+              </thead>
+              <tbody id="roleRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detail view -->
+        <div id="roleDetail" class="ac-detail" style="display:none;">
+          <div class="ac-detail-head">
+            <button class="ac-back" id="roleBack">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Back to roles
+            </button>
+            <div class="ac-detail-title" id="roleDetailName"></div>
+            <div class="ac-detail-desc" id="roleDetailDesc"></div>
+            <div class="ac-tabs2" id="roleTabs">
+              <button class="ac-tab2 active" data-rtab="users">Users</button>
+              <button class="ac-tab2" data-rtab="roles">Roles</button>
+              <button class="ac-tab2" data-rtab="privileges">Privileges</button>
+            </div>
+          </div>
+          <div class="ac-detail-body">
+            <div class="ac-rtab-panel" id="rtab-users"></div>
+            <div class="ac-rtab-panel" id="rtab-roles" style="display:none;"></div>
+            <div class="ac-rtab-panel" id="rtab-privileges" style="display:none;"></div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </div>
+
+  <div id="adminModalRoot"></div>
+</div>

@@ -1,0 +1,53 @@
+# StreamBridge → EKS: a namespaced ServiceAccount, RBAC for Strimzi
+# KafkaConnector objects, and a long-lived bearer token.
+#
+# Why this shape on EKS:
+#   - EKS's default kubectl auth uses `aws eks get-token`, which mints a token
+#     that EXPIRES in ~15 minutes. StreamBridge stores a static token, so that
+#     would start failing with 401. A Kubernetes-native ServiceAccount token
+#     (the Secret below) does NOT expire and does NOT depend on IAM/aws-auth.
+#   - The Role is namespace-scoped: StreamBridge can only touch KafkaConnector
+#     objects in this one namespace.
+#
+# Apply:   kubectl apply -f streambridge-eks-rbac.yaml
+# Change the namespace below if your Strimzi operator watches a different one.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: streambridge
+  namespace: kafka
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: streambridge-connectors
+  namespace: kafka
+rules:
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkaconnectors", "kafkaconnectors/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: streambridge-connectors
+  namespace: kafka
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: streambridge-connectors
+subjects:
+  - kind: ServiceAccount
+    name: streambridge
+    namespace: kafka
+---
+# K8s 1.24+ (EKS 1.24+) no longer auto-creates SA token Secrets. Create one
+# explicitly so StreamBridge has a stable, non-expiring bearer token.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: streambridge-token
+  namespace: kafka
+  annotations:
+    kubernetes.io/service-account.name: streambridge
+type: kubernetes.io/service-account-token

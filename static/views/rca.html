@@ -1,0 +1,91 @@
+<!-- ════ RCA VIEW ════ -->
+<div class="view" id="view-rca">
+  <p class="phase-note">RCA is a phase 2 feature. Thanks for stopping by.</p>
+  <div class="conn-tree-layout">
+
+    <!-- Left sidebar -->
+    <div class="conn-tree-sidebar" id="rcaSidebar">
+      <div class="conn-tree-toolbar">
+        <div class="conn-tree-search-wrap">
+          <svg class="conn-tree-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="conn-tree-search" placeholder="Search incidents…" oninput="filterRcaList(this.value)">
+        </div>
+        <button class="conn-tree-new-btn" onclick="openRcaModal()" title="New Incident">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+
+      </div>
+      <div class="conn-tree-body" id="rcaListBody"></div>
+    </div>
+    <div class="conn-tree-resizer" data-tree-pane="resize" role="separator" aria-orientation="vertical" aria-label="Resize list"></div>
+
+    <!-- Right detail panel -->
+    <div class="conn-tree-detail" id="rcaDetail">
+      <div class="conn-detail-empty">
+        <div class="conn-detail-empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <p>No incident selected</p>
+        <span>Select an incident from the list or create a new one</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════ RCA MODAL ════ -->
+<div id="rcaModal" onclick="rcaModalBgClick(event)" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.45);overflow:auto;">
+  <div class="rca-modal-box" onclick="event.stopPropagation()">
+    <div class="rca-modal-header">
+      <span id="rcaModalTitle">New Incident</span>
+      <button onclick="closeRcaModal()" class="rca-modal-close">×</button>
+    </div>
+    <div class="rca-modal-body">
+      <input type="hidden" id="rcaEditId">
+      <div class="rca-form-row">
+        <label class="rca-form-label">Title</label>
+        <input class="rca-form-input" id="rcaFormTitle" placeholder="Short description of the incident">
+      </div>
+      <div class="rca-form-row two-col">
+        <div>
+          <label class="rca-form-label">Severity</label>
+          <select class="rca-form-select" id="rcaFormSeverity">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div>
+          <label class="rca-form-label">Status</label>
+          <select class="rca-form-select" id="rcaFormStatus">
+            <option value="open">Open</option>
+            <option value="investigating">Investigating</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+      <div class="rca-form-row">
+        <label class="rca-form-label">Connection / Service</label>
+        <input class="rca-form-input" id="rcaFormConnection" placeholder="e.g. postgres-prod, kafka-prod-broker">
+      </div>
+      <div class="rca-form-row">
+        <label class="rca-form-label">Error Log</label>
+        <textarea class="rca-form-textarea" id="rcaFormError" placeholder="Paste the error message or stack trace here…" rows="4"></textarea>
+      </div>
+      <div class="rca-form-row">
+        <label class="rca-form-label">Root Cause</label>
+        <textarea class="rca-form-textarea" id="rcaFormRootCause" placeholder="What caused this incident?" rows="3"></textarea>
+      </div>
+      <div class="rca-form-row">
+        <label class="rca-form-label">Resolution</label>
+        <textarea class="rca-form-textarea" id="rcaFormResolution" placeholder="Steps taken to resolve…" rows="3"></textarea>
+      </div>
+    </div>
+    <div class="rca-modal-footer">
+      <button class="btn btn-secondary" onclick="closeRcaModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRca()">Save Incident</button>
+    </div>
+  </div>
+</div>

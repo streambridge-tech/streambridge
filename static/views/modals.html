@@ -1,0 +1,90 @@
+<!-- ════ NEW CONNECTION MODAL (legacy) ════ -->
+<div class="modal-overlay" id="connModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">New Connection</span>
+      <button class="btn-icon" onclick="closeModal()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <div>
+        <div class="form-label" style="margin-bottom:8px;">Connection Type</div>
+        <div class="conn-type-selector">
+          <div class="conn-type-opt selected" onclick="selectConnType('kafka',this)">
+            <div class="conn-type-icon">📨</div>
+            <div><div class="conn-type-name">Kafka Cluster</div><div class="conn-type-desc">Broker, security, topics</div></div>
+          </div>
+          <div class="conn-type-opt" onclick="selectConnType('connect',this)">
+            <div class="conn-type-icon">🔌</div>
+            <div><div class="conn-type-name">Kafka Connect</div><div class="conn-type-desc">Connect REST API endpoint</div></div>
+          </div>
+        </div>
+      </div>
+      <div id="connTypeFields"><!-- rendered by JS --></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-secondary" onclick="testConn()">Test Connection</button>
+      <button class="btn btn-primary" onclick="saveConn()">Save Connection</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ CONNECTOR TYPE MODAL ════ -->
+<div id="connTypeModal" onclick="connTypeModalBgClick(event)" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.45);overflow:auto;">
+  <div style="background:var(--surface);margin:40px auto 60px;max-width:900px;border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.22);" onclick="event.stopPropagation()">
+
+    <div id="connModalStep1">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);">New Connection</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Choose a connector type to get started</div>
+        </div>
+        <button onclick="closeConnTypeModal()" style="width:30px;height:30px;border:none;background:var(--surface2);border-radius:6px;cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 24px;border-bottom:1px solid var(--border);">
+        <div style="position:relative;flex:1;max-width:280px;">
+          <input id="cmModalSearch" placeholder="Search connectors…" oninput="filterCmCards()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px 6px 30px;font-size:12px;color:var(--text);outline:none;box-sizing:border-box;">
+          <svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button class="cm-filter-tab active" onclick="setCmFilter('all',this)">All</button>
+          <button class="cm-filter-tab" onclick="setCmFilter('transport',this)">Transport</button>
+          <button class="cm-filter-tab" onclick="setCmFilter('notification',this)">Notifications</button>
+        </div>
+      </div>
+      <div id="cmBody" style="padding:20px 24px 24px;max-height:54vh;overflow-y:auto;"></div>
+      <div style="padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;background:var(--surface2);">
+        <button onclick="closeConnTypeModal()" style="padding:7px 16px;border:1px solid var(--border);border-radius:6px;background:none;font-size:12.5px;cursor:pointer;color:var(--text);">Cancel</button>
+      </div>
+    </div>
+
+    <div id="connModalStep2" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button onclick="connModalBack()" style="width:28px;height:28px;border:1px solid var(--border);background:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Back">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div id="connModalIcon" style="width:36px;height:36px;flex-shrink:0;border-radius:8px;overflow:hidden;"></div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text);" id="connModalTitle"></div>
+            <div style="font-size:11.5px;color:var(--text2);" id="connModalSub"></div>
+          </div>
+        </div>
+        <button onclick="closeConnTypeModal()" style="width:30px;height:30px;border:none;background:var(--surface2);border-radius:6px;cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
+      </div>
+      <div style="padding:22px 24px;max-height:58vh;overflow-y:auto;">
+        <div id="connModalFormBody" style="display:flex;flex-direction:column;gap:14px;"></div>
+      </div>
+      <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);">
+        <button id="connModalTestBtn" onclick="connModalTestConn()" style="padding:7px 14px;border:1px solid var(--border);border-radius:6px;background:none;font-size:12px;cursor:pointer;color:var(--accent);font-weight:600;">⚡ Test Connection</button>
+        <span id="connModalTestResult" class="cm-test-result"></span>
+        <div style="flex:1;"></div>
+        <button onclick="closeConnTypeModal()" style="padding:7px 16px;border:1px solid var(--border);border-radius:6px;background:none;font-size:12.5px;cursor:pointer;">Cancel</button>
+        <button onclick="connModalSave()" style="padding:7px 18px;background:var(--accent);border:none;border-radius:6px;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Save Connection</button>
+      </div>
+    </div>
+
+  </div>
+</div>

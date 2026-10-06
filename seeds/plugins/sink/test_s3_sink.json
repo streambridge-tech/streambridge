@@ -1,0 +1,27 @@
+{
+  "name": "test_s3_sink",
+  "db": "Amazon S3",
+  "type": "sink",
+  "format": "JSON",
+  "description": "TEST SAMPLE (Docker sandbox). Aiven S3 sink that reads a Confluent-Avro CDC topic and writes JSONL objects to a bucket. Points at the local adobe/s3mock (bucket 'streambridge-sink', endpoint 'http://s3mock:9090', keys foo/bar). Swap the endpoint/region/keys for real AWS S3 and move the secret key into a vault. Deploy via a Kafka Connect connection (REST).",
+  "config": {
+    "connector.class": "io.aiven.kafka.connect.s3.AivenKafkaConnectS3SinkConnector",
+    "tasks.max": "1",
+    "topics": "sbconf.inventory.customers",
+    "aws.access.key.id": "foo",
+    "aws.secret.access.key": "bar",
+    "aws.s3.bucket.name": "streambridge-sink",
+    "aws.s3.endpoint": "http://s3mock:9090",
+    "aws.s3.region": "us-east-1",
+    "aws.s3.prefix": "cdc/",
+    "format.output.type": "jsonl",
+    "format.output.fields": "value",
+    "format.output.envelope": "false",
+    "file.max.records": "1",
+    "file.compression.type": "none",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081"
+  }
+}

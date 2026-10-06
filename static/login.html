@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamBridge — Sign in</title>
+  <style>
+    :root {
+      --accent:#ff6b35; --accent-600:#ef5a24; --accent-700:#d94d1a;
+      --ink:#1a1d24; --ink2:#5a6372; --ink3:#8a93a3;
+      --surface:#ffffff; --bg:#f4f6fb; --border:#e4e8f0; --field:#f8fafc;
+      --green:#16a34a; --radius:14px;
+      --shadow:0 20px 60px rgba(26,29,36,.14);
+    }
+    * { box-sizing:border-box; }
+    html,body { height:100%; }
+    body {
+      margin:0; display:flex; min-height:100vh;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      color:var(--ink); background:var(--bg);
+    }
+
+    /* Left hero */
+    .hero {
+      flex:1 1 46%; position:relative; overflow:hidden; color:#fff;
+      padding:56px 52px; display:flex; flex-direction:column; justify-content:space-between;
+      background-color:var(--accent);
+      background-image:
+        radial-gradient(1200px 500px at -10% -10%, rgba(255,255,255,.16), transparent 60%),
+        linear-gradient(145deg, #ff7a45 0%, var(--accent) 36%, var(--accent-700) 100%);
+    }
+    .hero::after {
+      content:""; position:absolute; right:-120px; bottom:-140px; width:420px; height:420px;
+      border-radius:50%; background:rgba(255,255,255,.08);
+    }
+    .hero-brand { display:flex; align-items:center; gap:12px; position:relative; z-index:1; }
+    .hero-logo {
+      width:40px; height:40px; border-radius:11px; background:rgba(255,255,255,.18);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .hero-logo svg { width:24px; height:24px; }
+    .hero-name { font-weight:800; font-size:18px; letter-spacing:.2px; }
+    .hero-sub { font-size:12px; opacity:.85; margin-top:1px; }
+    .hero-body { position:relative; z-index:1; }
+    .hero-title { font-size:34px; line-height:1.15; font-weight:800; margin:0 0 14px; max-width:460px; }
+    .hero-lead { font-size:15px; line-height:1.6; opacity:.92; max-width:420px; margin:0 0 28px; }
+    .hero-list { list-style:none; padding:0; margin:0; display:grid; gap:14px; max-width:430px; }
+    .hero-list li { display:flex; gap:12px; align-items:flex-start; font-size:14px; opacity:.96; }
+    .hero-check {
+      flex:none; width:22px; height:22px; border-radius:7px; background:rgba(255,255,255,.2);
+      display:flex; align-items:center; justify-content:center; margin-top:1px;
+    }
+    .hero-check svg { width:13px; height:13px; }
+    .hero-foot { position:relative; z-index:1; font-size:12px; opacity:.8; }
+
+    /* Right panel */
+    .panel { flex:1 1 54%; display:flex; align-items:center; justify-content:center; padding:40px 28px; }
+    .card {
+      width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border);
+      border-radius:18px; box-shadow:var(--shadow); padding:34px 32px;
+    }
+    .eyebrow { font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+    h1 { font-size:23px; margin:8px 0 6px; font-weight:800; letter-spacing:-.2px; }
+    .subtitle { font-size:14px; color:var(--ink2); margin:0 0 22px; line-height:1.5; }
+
+    label { display:block; font-size:12.5px; font-weight:600; color:var(--ink2); margin:14px 0 6px; }
+    .input {
+      width:100%; background:var(--field); border:1.5px solid var(--border); border-radius:10px;
+      padding:12px 13px; font-size:14px; color:var(--ink); outline:none; transition:border-color .15s, background .15s;
+    }
+    .input:focus { border-color:var(--accent); background:#fff; }
+    .input::placeholder { color:var(--ink3); }
+
+    .btn {
+      width:100%; margin-top:22px; border:none; border-radius:10px; padding:13px; cursor:pointer;
+      font-size:14px; font-weight:700; color:#fff; background:var(--accent);
+      transition:background .15s, transform .05s; display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .btn:hover { background:var(--accent-600); }
+    .btn:active { transform:translateY(1px); }
+    .btn:disabled { opacity:.55; cursor:default; }
+    .btn svg { width:16px; height:16px; }
+
+    .msg { margin-top:14px; font-size:12.5px; min-height:16px; line-height:1.4; }
+    .msg.error { color:#dc2626; }
+    .msg.ok { color:var(--green); }
+
+    /* Mode choice cards */
+    .choices { display:grid; gap:14px; margin-top:6px; }
+    .choice {
+      text-align:left; width:100%; background:var(--field); border:1.5px solid var(--border);
+      border-radius:14px; padding:16px 16px; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s;
+      display:flex; gap:14px; align-items:flex-start;
+    }
+    .choice:hover { border-color:#cfd6e4; background:#fff; }
+    .choice.is-active { border-color:var(--accent); background:#fff; box-shadow:0 0 0 3px rgba(255,107,53,.12); }
+    .choice-ic {
+      flex:none; width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+      background:rgba(255,107,53,.12); color:var(--accent);
+    }
+    .choice-ic svg { width:21px; height:21px; }
+    .choice-title { font-size:15px; font-weight:800; display:flex; align-items:center; gap:8px; }
+    .choice-desc { font-size:12.8px; color:var(--ink2); margin-top:3px; line-height:1.5; }
+    .pill {
+      font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+      padding:2px 7px; border-radius:999px; background:#fef2e8; color:var(--accent-700); border:1px solid #f6d6bf;
+    }
+
+    .notice {
+      margin-top:16px; border-radius:11px; padding:12px 14px; font-size:12.5px; line-height:1.5;
+      background:#fff7ed; border:1px solid #fcd9b6; color:#9a4a16;
+    }
+    .confirm { display:flex; gap:9px; align-items:flex-start; margin-top:14px; font-size:12.8px; color:var(--ink2); }
+    .confirm input { margin-top:2px; width:16px; height:16px; accent-color:var(--accent); }
+
+    .steps { display:flex; gap:7px; margin-bottom:20px; }
+    .dot { height:5px; flex:1; border-radius:999px; background:var(--border); }
+    .dot.on { background:var(--accent); }
+
+    .back { background:none; border:none; color:var(--ink2); font-size:13px; cursor:pointer; padding:0; margin-top:16px; display:inline-flex; align-items:center; gap:6px; }
+    .back:hover { color:var(--ink); }
+    .back svg { width:14px; height:14px; }
+
+    [hidden] { display:none !important; }
+
+    @media (max-width: 920px) {
+      .hero { display:none; }
+      .panel { flex:1; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="hero">
+    <div class="hero-brand">
+      <div class="hero-logo">
+        <svg viewBox="0 0 32 32" fill="none"><circle cx="5.2" cy="16" r="2.15" fill="#fff"/><path d="M8.2 16Q11.5 6 13.4 16Q15.5 26 18.2 16" stroke="#fff" stroke-width="2.05" stroke-linecap="round"/><path d="M20.2 10.5 28.2 16 20.2 21.5" stroke="#fff" stroke-width="2.45" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div class="hero-name">StreamBridge</div>
+        <div class="hero-sub">CDC Platform</div>
+      </div>
+    </div>
+
+    <div class="hero-body">
+      <h2 class="hero-title">Change Data Capture, made simple.</h2>
+      <p class="hero-lead">Author, deploy, and operate your Kafka Connect pipelines from one clean workspace — no YAML archaeology required.</p>
+      <ul class="hero-list">
+        <li><span class="hero-check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Build &amp; deploy connectors with live validation</li>
+        <li><span class="hero-check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Live status, task traces, logs &amp; alerts</li>
+        <li><span class="hero-check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Roles &amp; permissions when your team grows</li>
+      </ul>
+    </div>
+
+    <div class="hero-foot">© StreamBridge — your data, your pipelines.</div>
+  </aside>
+
+  <main class="panel">
+    <div class="card">
+
+      <!-- Returning sign-in -->
+      <section id="view-signin" hidden>
+        <div class="eyebrow">Welcome back</div>
+        <h1>Sign in</h1>
+        <p class="subtitle">Enter your credentials to access your workspace.</p>
+        <form id="signin-form">
+          <label for="username">Username</label>
+          <input id="username" class="input" type="text" autocomplete="username" placeholder="you@example.com" autofocus>
+          <label for="password">Password</label>
+          <input id="password" class="input" type="password" autocomplete="current-password" placeholder="••••••••">
+          <button id="signin-btn" class="btn" type="submit">
+            Sign in
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <div id="signin-msg" class="msg"></div>
+        </form>
+      </section>
+
+      <!-- First run · Step 1: choose mode -->
+      <section id="view-welcome" hidden>
+        <div class="steps"><span class="dot on"></span><span class="dot"></span></div>
+        <div class="eyebrow">Get started</div>
+        <h1>Welcome to StreamBridge</h1>
+        <p class="subtitle">First, tell us how you'll use it. You can start solo and grow into a team later.</p>
+
+        <div class="choices">
+          <button type="button" class="choice" data-mode="personal">
+            <span class="choice-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+            </span>
+            <span>
+              <span class="choice-title">Personal</span>
+              <span class="choice-desc">Just me. Jump straight in — no logins, no setup. Perfect for solo work and trying things out.</span>
+            </span>
+          </button>
+
+          <button type="button" class="choice" data-mode="team">
+            <span class="choice-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <span>
+              <span class="choice-title">Team <span class="pill">Permanent</span></span>
+              <span class="choice-desc">Invite others with accounts, roles &amp; permissions. This is a one-way upgrade — a team workspace can't be switched back to personal.</span>
+            </span>
+          </button>
+        </div>
+
+        <button id="welcome-next" class="btn" type="button" disabled>Continue</button>
+        <div id="welcome-msg" class="msg"></div>
+      </section>
+
+      <!-- First run · Step 2a: personal -->
+      <section id="view-personal" hidden>
+        <div class="steps"><span class="dot on"></span><span class="dot on"></span></div>
+        <div class="eyebrow">Personal workspace</div>
+        <h1>You're all set</h1>
+        <p class="subtitle">Personal mode skips logins entirely — just give yourself a name and jump in.</p>
+        <label for="p-name">Display name <span style="font-weight:400;color:var(--ink3)">(optional)</span></label>
+        <input id="p-name" class="input" type="text" placeholder="e.g. Rahul">
+        <button id="personal-btn" class="btn" type="button">
+          Enter StreamBridge
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+        <button class="back" type="button" data-back>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back
+        </button>
+        <div id="personal-msg" class="msg"></div>
+      </section>
+
+      <!-- First run · Step 2b: team -->
+      <section id="view-team" hidden>
+        <div class="steps"><span class="dot on"></span><span class="dot on"></span></div>
+        <div class="eyebrow">Team workspace</div>
+        <h1>Create your admin account</h1>
+        <p class="subtitle">This first account owns the workspace and can invite others.</p>
+        <form id="team-form">
+          <label for="t-user">Username</label>
+          <input id="t-user" class="input" type="text" autocomplete="username" placeholder="you@example.com">
+          <label for="t-pass">Password</label>
+          <input id="t-pass" class="input" type="password" autocomplete="new-password" placeholder="At least 12 characters">
+          <label for="t-pass2">Confirm password</label>
+          <input id="t-pass2" class="input" type="password" autocomplete="new-password" placeholder="Re-enter password">
+
+          <div class="notice">
+            <strong>Heads up:</strong> choosing Team is permanent. A team workspace can't be switched back to Personal.
+          </div>
+          <label class="confirm">
+            <input id="t-confirm" type="checkbox">
+            I understand this workspace will be a permanent Team workspace.
+          </label>
+
+          <button id="team-btn" class="btn" type="submit" disabled>Create workspace</button>
+        </form>
+        <button class="back" type="button" data-back>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back
+        </button>
+        <div id="team-msg" class="msg"></div>
+      </section>
+
+      <!-- Loading placeholder -->
+      <section id="view-loading">
+        <h1>StreamBridge</h1>
+        <p class="subtitle">Loading…</p>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    const views = {
+      loading:  document.getElementById('view-loading'),
+      signin:   document.getElementById('view-signin'),
+      welcome:  document.getElementById('view-welcome'),
+      personal: document.getElementById('view-personal'),
+      team:     document.getElementById('view-team'),
+    };
+    function show(name) {
+      Object.entries(views).forEach(([k, el]) => { el.hidden = (k !== name); });
+      const first = views[name].querySelector('input');
+      if (first) setTimeout(() => first.focus(), 30);
+    }
+    function setMsg(el, text, ok) { el.textContent = text || ''; el.className = 'msg' + (text ? (ok ? ' ok' : ' error') : ''); }
+
+    // Decide first-run vs returning.
+    fetch('/api/auth/status').then(r => r.json()).then(s => {
+      show(s && s.setupRequired ? 'welcome' : 'signin');
+    }).catch(() => show('signin'));
+
+    // Returning sign-in
+    const signinForm = document.getElementById('signin-form');
+    const signinBtn = document.getElementById('signin-btn');
+    const signinMsg = document.getElementById('signin-msg');
+    signinForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setMsg(signinMsg, '');
+      signinBtn.disabled = true;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+          }),
+        });
+        if (res.ok) { window.location.href = '/'; return; }
+        const body = await res.json().catch(() => ({}));
+        setMsg(signinMsg, body.error || 'Sign in failed');
+      } catch { setMsg(signinMsg, 'Network error'); }
+      finally { signinBtn.disabled = false; }
+    });
+
+    // Step 1: choose mode
+    let chosenMode = null;
+    const welcomeNext = document.getElementById('welcome-next');
+    document.querySelectorAll('#view-welcome .choice').forEach(btn => {
+      btn.addEventListener('click', () => {
+        chosenMode = btn.dataset.mode;
+        document.querySelectorAll('#view-welcome .choice').forEach(c => c.classList.toggle('is-active', c === btn));
+        welcomeNext.disabled = false;
+      });
+    });
+    welcomeNext.addEventListener('click', () => {
+      if (chosenMode === 'personal') show('personal');
+      else if (chosenMode === 'team') show('team');
+    });
+    document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => show('welcome')));
+
+    // Shared: call the (future) setup endpoint, degrade gracefully.
+    async function runSetup(payload, msgEl, btn) {
+      btn.disabled = true;
+      setMsg(msgEl, '');
+      try {
+        const res = await fetch('/api/auth/setup', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) { window.location.href = '/'; return; }
+        let body = {};
+        try { body = await res.json(); } catch {}
+        if (res.status === 404) {
+          setMsg(msgEl, 'Setup backend is being wired up next — this is the new design preview.');
+        } else {
+          setMsg(msgEl, body.error || 'Could not complete setup.');
+        }
+      } catch {
+        setMsg(msgEl, 'Network error — please try again.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Step 2a: personal (passwordless)
+    const personalBtn = document.getElementById('personal-btn');
+    personalBtn.addEventListener('click', () => {
+      runSetup({ mode: 'personal', displayName: document.getElementById('p-name').value.trim() },
+        document.getElementById('personal-msg'), personalBtn);
+    });
+
+    // Step 2b: team
+    const teamForm = document.getElementById('team-form');
+    const teamBtn = document.getElementById('team-btn');
+    const teamMsg = document.getElementById('team-msg');
+    const teamConfirm = document.getElementById('t-confirm');
+    teamConfirm.addEventListener('change', () => { teamBtn.disabled = !teamConfirm.checked; });
+    teamForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const user = document.getElementById('t-user').value.trim();
+      const pass = document.getElementById('t-pass').value;
+      const pass2 = document.getElementById('t-pass2').value;
+      if (!user) return setMsg(teamMsg, 'Username is required.');
+      if (pass.length < 12) return setMsg(teamMsg, 'Use at least 12 characters.');
+      if (pass !== pass2) return setMsg(teamMsg, 'Passwords do not match.');
+      if (!teamConfirm.checked) return setMsg(teamMsg, 'Please confirm this is a permanent Team workspace.');
+      runSetup({ mode: 'team', username: user, password: pass }, teamMsg, teamBtn);
+    });
+  </script>
+</body>
+</html>

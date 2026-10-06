@@ -1,0 +1,13 @@
+{
+  "name": "test_file_source_k8s",
+  "db": "Kubernetes",
+  "type": "source",
+  "format": "JSON",
+  "description": "TEST SAMPLE (Strimzi / Kubernetes). FileStreamSourceConnector that streams a file inside the Connect pod into one Kafka topic. Deploy it with a Kafka Connect connection whose Deployment = Kubernetes (Strimzi on Docker Desktop or EKS); StreamBridge writes a KafkaConnector object and Strimzi reconciles it. The Strimzi Connect image must include FileStreamSourceConnector. See sandbox/kubernetes_stremzi and sandbox/eks.",
+  "config": {
+    "connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
+    "tasks.max": "1",
+    "file": "/opt/kafka/LICENSE",
+    "topic": "sb-k8s-topic"
+  }
+}

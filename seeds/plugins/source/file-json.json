@@ -1,0 +1,13 @@
+{
+  "name": "file-source",
+  "db": "File",
+  "type": "source",
+  "format": "JSON",
+  "description": "Sample file source. Reads a file on the Connect worker into one topic. The Connect image must include FileStreamSourceConnector.",
+  "config": {
+    "connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
+    "tasks.max": "1",
+    "file": "/opt/kafka/LICENSE",
+    "topic": "license-topic"
+  }
+}

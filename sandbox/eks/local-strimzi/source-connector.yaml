@@ -1,0 +1,13 @@
+# Same namespace as the KafkaConnect above. The label picks the cluster.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: my-source-connector
+  labels:
+    strimzi.io/cluster: my-connect-cluster
+spec:
+  class: org.apache.kafka.connect.file.FileStreamSourceConnector
+  tasksMax: 1
+  config:
+    file: "/opt/kafka/LICENSE"
+    topic: my-topic

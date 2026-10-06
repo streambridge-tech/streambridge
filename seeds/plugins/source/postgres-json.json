@@ -1,0 +1,25 @@
+{
+  "name": "postgres-json",
+  "db": "PostgreSQL",
+  "type": "source",
+  "format": "JSON",
+  "description": "Debezium Postgres source. Captures INSERT/UPDATE/DELETE into Kafka topics as JSON.",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "",
+    "database.port": "5432",
+    "database.user": "",
+    "database.password": "",
+    "database.dbname": "",
+    "topic.prefix": "",
+    "slot.name": "",
+    "plugin.name": "pgoutput",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "true",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "true",
+    "heartbeat.interval.ms": "5000",
+    "snapshot.mode": "initial"
+  }
+}

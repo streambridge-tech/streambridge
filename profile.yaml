@@ -1,0 +1,68 @@
+app:
+  name: StreamBridge
+  version: "0.1.0"
+  description: CDC Platform
+
+server:
+  host: "127.0.0.1"
+  port: 5000
+  debug: true
+
+static:
+  dir: static
+  dist_dir: static/dist
+
+kafka:
+  bootstrap_servers: "localhost:9092"
+  security_protocol: PLAINTEXT
+
+kafka_connect:
+  url: "http://localhost:8083"
+  auth:
+    type: none          # none | basic | bearer | mtls
+
+database:
+  # Which backend to use: sqlite | postgresql | mysql
+  # Fill a value here and StreamBridge uses it.
+  # Leave it blank to read STREAMBRIDGE__DATABASE__* from the environment or from .env.
+  backend: sqlite
+
+  sqlite:
+    # Blank falls through to STREAMBRIDGE__DATABASE__SQLITE__PATH
+    path: data/streambridge.db
+
+  postgresql:
+    # Fill these, or leave blank and export STREAMBRIDGE__DATABASE__POSTGRESQL__HOST and the rest.
+    host: ""
+    port: ""
+    database: ""
+    username: ""
+    password: ""
+
+  mysql:
+    # Fill these, or leave blank and export STREAMBRIDGE__DATABASE__MYSQL__HOST and the rest.
+    host: ""
+    port: ""
+    database: ""
+    username: ""
+    password: ""
+
+connectors:
+  # Supported source types: postgres, mysql
+  # Supported sink types:   s3
+  # To add a new connector: register it in app/connectors/__init__.py
+
+auth:
+  # false = personal mode (no login, localhost only).
+  # true  = team mode (login required, roles enforced).
+  enabled: true
+  # Leave blank. StreamBridge creates a key in its database on first start.
+  # A value here wins over STREAMBRIDGE__AUTH__SECRET_KEY. Do not commit a real key.
+  secret_key: ""
+  session_lifetime_min: 720
+  # Set true when serving over HTTPS so the session cookie is Secure.
+  cookie_secure: false
+
+logging:
+  level: INFO           # DEBUG | INFO | WARNING | ERROR
+  format: "%(asctime)s  %(levelname)-8s  %(name)s  %(message)s"

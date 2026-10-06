@@ -1,0 +1,13 @@
+{
+  "name": "eks-file-source",
+  "db": "EKS",
+  "type": "source",
+  "format": "JSON",
+  "description": "EKS / Strimzi sample. FileStreamSourceConnector reads a file in the Connect pod into one Kafka topic. Deploy it with a Kafka Connect connection whose Deployment = Kubernetes (Strimzi on EKS or Docker Desktop). The Strimzi Connect image must include FileStreamSourceConnector.",
+  "config": {
+    "connector.class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
+    "tasks.max": "1",
+    "file": "/opt/kafka/LICENSE",
+    "topic": "eks-file-topic"
+  }
+}

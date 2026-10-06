@@ -1,0 +1,37 @@
+<div class="view" id="view-pipelines">
+  <p class="phase-note">Pipelines is a phase 2 feature. Thanks for stopping by.</p>
+  <div class="pl-layout">
+    <aside class="pl-sidebar" id="plSidebar">
+      <div class="pl-toolbar">
+        <div class="pl-search-wrap">
+          <svg class="pl-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="pl-search" id="plSearch" placeholder="Search pipelines…" spellcheck="false" autocomplete="off">
+        </div>
+        <button type="button" class="pl-new-btn" id="plNewBtn" title="New pipeline">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+      <div class="pl-tree" id="plTree" role="tree" aria-label="Pipelines"></div>
+    </aside>
+    <div class="pl-resizer pl-resizer-col" id="plSideResizer" role="separator" aria-orientation="vertical" aria-label="Resize file list"></div>
+    <div class="pl-detail" id="plDetail"></div>
+  </div>
+
+  <div class="pl-modal" id="plModal" hidden>
+    <div class="pl-modal-card" role="dialog" aria-labelledby="plModalTitle">
+      <div class="pl-modal-head">
+        <div id="plModalTitle" class="pl-modal-title">New pipeline</div>
+        <button type="button" class="pl-icon-btn" id="plModalClose" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <label class="pl-field">Name
+        <input class="pl-input" id="plModalName" placeholder="orders-cdc" autocomplete="off">
+      </label>
+      <div class="pl-modal-actions">
+        <button type="button" class="pl-btn" id="plModalCancel">Cancel</button>
+        <button type="button" class="pl-btn pl-btn-primary" id="plModalCreate">Create</button>
+      </div>
+    </div>
+  </div>
+</div>

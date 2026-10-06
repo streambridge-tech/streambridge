@@ -1,0 +1,24 @@
+<!-- Connectors: notebook editor. Logic lives in static/js/configs/ -->
+<div class="view" id="view-configs">
+  <div class="cfg-layout">
+    <aside class="cfg-tree" id="cfgTree">
+      <div class="cfg-tree-toolbar">
+        <div class="cfg-search-wrap">
+          <svg class="cfg-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="cfg-search" id="cfgSearch" type="search" placeholder="Search folders…" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="cfg-icon-btn" id="cfgAddFolderBtn" type="button" title="New parent folder" aria-label="New parent folder">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="cfg-icon-btn" id="cfgRefreshBtn" type="button" title="Refresh" aria-label="Refresh">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
+        </button>
+      </div>
+      <div class="cfg-tree-body" id="cfgTreeBody"></div>
+    </aside>
+    <div class="cfg-resizer" id="cfgResizer" role="separator" aria-orientation="vertical" aria-label="Resize tree"></div>
+    <main class="cfg-detail" id="cfgDetail"></main>
+  </div>
+  <div class="cfg-modal-root" id="cfgModalRoot" hidden></div>
+  <div class="cfg-tree-menu" id="cfgTreeMenu" hidden></div>
+</div>
