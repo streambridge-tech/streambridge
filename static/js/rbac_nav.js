@@ -8,6 +8,8 @@
     const res = await _origFetch(...args);
     if (res.status === 403) {
       res.clone().json().then((body) => {
+        // Flagged mid-session: the login page shows the change-password form.
+        if (body && body.code === 'must_change_password') window.location.href = '/login';
         if (body && body.error === 'forbidden') {
           showForbiddenBanner(body.message || 'You do not have permission to perform this action.');
         }
