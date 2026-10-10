@@ -125,6 +125,13 @@ def _strip_env_block(raw: str) -> str:
     return re.sub(r'^( {2}env:\s*\n)((?:[ \t]{4}[\s\S]*?\n)*)', '', raw, flags=re.MULTILINE)
 
 
+def _undefined_vars(raw: str, env: str) -> list[str]:
+    """Names used in {{ var('x') }} (outside the env: block) that have no value for this env."""
+    defined = _extract_env_vars(raw, env)
+    used = _VAR_RE.findall(_strip_env_block(raw))
+    return [name for name in dict.fromkeys(used) if name not in defined]
+
+
 def resolve_yaml(raw: str, env: str) -> str:
     """Substitute {{ var() }}, {{ conn() }}, {{ env_var() }} in the raw YAML."""
     vars_ = _extract_env_vars(raw, env)
@@ -311,6 +318,15 @@ def build_pipeline(raw: str, env: str, db) -> dict:
 
     # ── Resolve {{ var() }} / {{ conn() }} / {{ env_var() }} ──────────────────
     log("info", "Resolving {{ var() }} and {{ conn() }} expressions…")
+    undefined = _undefined_vars(raw, env)
+    if undefined:
+        errors = []
+        for name in undefined:
+            errors += [
+                f"var('{name}') is not defined in pipeline.env.{env} or pipeline.vars",
+                f"Fix: add  {name}: <value>  under pipeline.env.{env}: or pipeline.vars:",
+            ]
+        return _fail(logs, errors)
     resolved   = resolve_yaml(raw, env or "")
     unresolved = _ANY_RE.findall(resolved)
     if unresolved:

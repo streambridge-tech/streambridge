@@ -176,6 +176,26 @@ class ResolveAndMergeTests(unittest.TestCase):
         self.assertTrue(result["ok"], msg=f"expected ok; logs={result['logs']}")
         self.assertEqual(result["sourceConfig"].get("database.hostname"), "pg.internal")
 
+    def test_undefined_var_fails_the_build_naming_the_variable(self):
+        raw = postgres_source_yaml(VALID_PG_CONFIG + "\n    database.hostname: {{ var('nope') }}")
+        result = build(raw)
+        self._assert_failed_with(result, "var('nope')")
+        self.assertEqual(result["sourceConfig"], {})
+
+    def test_var_defined_only_for_another_env_fails(self):
+        raw = postgres_source_yaml(
+            VALID_PG_CONFIG + "\n    database.hostname: {{ var('pg_host') }}"
+        ).replace("\nsource:", "    prod:\n      pg_host: pg.prod\n\nsource:", 1)
+        self._assert_failed_with(build(raw), "var('pg_host')")
+
+    def test_var_from_pipeline_vars_block_resolves(self):
+        raw = postgres_source_yaml(
+            VALID_PG_CONFIG + "\n    database.hostname: {{ var('pg_host') }}"
+        ).replace("  name: pg-to-s3\n", "  name: pg-to-s3\n  vars:\n    pg_host: from-vars\n", 1)
+        result = build(raw)
+        self.assertTrue(result["ok"], msg=f"expected ok; logs={result['logs']}")
+        self.assertEqual(result["sourceConfig"].get("database.hostname"), "from-vars")
+
     def test_crlf_yaml_builds_like_lf_yaml(self):
         # blank line inside source: before its config:
         raw = postgres_source_yaml(VALID_PG_CONFIG).replace("  config:\n", "\n  config:\n", 1)
