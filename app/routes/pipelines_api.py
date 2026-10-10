@@ -17,6 +17,7 @@ _DEFAULT_ALERT_ATTEMPTS = 3
 
 def _alert_blocks(yaml_raw: str) -> dict[str, str]:
     """Return {"source"|"sink": alert block text} for the sections that define an alert:."""
+    yaml_raw = yaml_raw.replace("\r\n", "\n")
     blocks = {}
     for side in ("source", "sink"):
         m = _ALERT_BLOCK_RE.search(_extract_top_block(yaml_raw, side))

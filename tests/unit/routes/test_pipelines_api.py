@@ -79,6 +79,14 @@ class ExtractAlertsTests(unittest.TestCase):
     def test_attempts_outside_the_alert_block_are_ignored(self):
         self.assertEqual(self._alerts()["sink"].attempts, 3)
 
+    def test_crlf_yaml_reads_the_alert_block(self):
+        raw = ALERT_YAML.replace("    channel_name: ops\n", "\n    channel_name: ops\n")
+        alerts = self._alerts(raw.replace("\n", "\r\n"))
+        self.assertEqual(alerts["source"].channel_name, "ops")
+        self.assertEqual(alerts["source"].channel_type, "slack")
+        self.assertEqual(alerts["source"].attempts, 5)
+        self.assertEqual(alerts["sink"].channel_name, "data")
+
     def test_section_without_alert_block_has_no_alert(self):
         raw = ALERT_YAML.replace("  alert:\n    type: gchat\n    channel_name: data\n", "")
         self.assertEqual(set(self._alerts(raw)), {"source"})

@@ -95,9 +95,12 @@ def _extract_env_block(raw: str, env: str) -> str:
 
 
 def _extract_top_block(raw: str, section: str) -> str:
-    """Return a top-level block (e.g. 'source:' or 'sink:') bounded to the next top-level key."""
+    """Return a top-level block (e.g. 'source:' or 'sink:') bounded to the next top-level key.
+
+    Indented lines, blank lines and column-0 comments belong to the block.
+    """
     m = re.search(
-        rf'^{re.escape(section)}\s*:\s*\n((?:[ \t]+.*\n?|\n)*)',
+        rf'^{re.escape(section)}[ \t]*:[ \t]*(?:#.*)?\r?\n((?:[ \t]+.*\n?|#.*\n?|\r?\n)*)',
         raw, re.MULTILINE
     )
     return m.group(0) if m else ""
@@ -137,17 +140,23 @@ def resolve_yaml(raw: str, env: str) -> str:
 def _section_config(raw: str, section: str) -> dict:
     """Extract key:value pairs under source.config or sink.config block.
 
-    The search stays inside the section's own block, and the config body ends
-    at the first line that is not indented deeper than `config:`.
+    Only a config: that is a direct child of the section counts (same indent
+    as type:/connector_name:). Its body ends at the first line that is not
+    indented deeper than config:; comment and blank lines do not end it.
     """
+    block = _extract_top_block(raw, section)
+    child = re.search(r'^([ \t]+)[^\s#]', block, re.MULTILINE)
+    if not child:
+        return {}
+    indent = re.escape(child.group(1))
     m = re.search(
-        r'^([ \t]+)config:\s*\n((?:\1[ \t]+[\w.]+[ \t]*:[ \t]*[^\n]*\n?)+)',
-        _extract_top_block(raw, section), re.MULTILINE
+        rf'^{indent}config[ \t]*:[ \t]*(?:#.*)?\r?\n((?:{indent}[ \t]+.*\n?|[ \t]*#.*\n?|[ \t]*\r?\n)*)',
+        block, re.MULTILINE
     )
     if not m:
         return {}
     config = {}
-    for km in re.finditer(r'^[ \t]+([\w.]+)[ \t]*:[ \t]*([^\n#]*)', m.group(2), re.MULTILINE):
+    for km in re.finditer(r'^[ \t]+([\w.]+)[ \t]*:[ \t]*([^\n#]*)', m.group(1), re.MULTILINE):
         val = km.group(2).strip().strip('"').strip("'")
         if val:
             config[km.group(1).strip()] = val
@@ -188,6 +197,7 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     from app.models.plugin import Plugin
     from app.models.connection import Connection
 
+    raw = raw.replace("\r\n", "\n")
     logs = []
 
     def log(level, text):

@@ -234,6 +234,12 @@ class ConnectionLayeringTests(unittest.TestCase):
         deployed = self._deploy(raw, self._connections(postgres_dev={"database.port": "5433"}))
         self.assertEqual(deployed["pg-to-s3-source"]["database.port"], "6543")
 
+    def test_crlf_yaml_still_layers_the_yaml_over_the_connection(self):
+        raw = postgres_source_yaml(VALID_PG_CONFIG + "\n    database.port: \"6543\"")
+        raw = raw.replace("  config:\n", "\n  config:\n", 1).replace("\n", "\r\n")
+        deployed = self._deploy(raw, self._connections(postgres_dev={"database.port": "5433"}))
+        self.assertEqual(deployed["pg-to-s3-source"]["database.port"], "6543")
+
     def test_connector_name_is_never_overridden_by_a_connection(self):
         deployed = self._deploy(
             postgres_source_yaml(VALID_PG_CONFIG), self._connections(postgres_dev={"name": "other"}),

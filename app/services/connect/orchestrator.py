@@ -128,6 +128,7 @@ def deploy_pipeline(
             None, [],
         )
 
+    raw_yaml     = raw_yaml.replace("\r\n", "\n")
     resolved     = resolve_yaml(raw_yaml, env)
     env_block    = _extract_env_block(raw_yaml, env)
     src_block    = _extract_top_block(resolved, "source")
