@@ -67,6 +67,12 @@ def _as_bool(value, default: bool = False) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _as_list(value) -> list[str]:
+    """A yaml list, or a comma-separated string from the environment."""
+    items = value.split(",") if isinstance(value, str) else (value or [])
+    return [str(item).strip() for item in items if str(item).strip()]
+
+
 def _prefer(file_value, env_value, default=""):
     """Use the yaml value when it is set. Otherwise use the environment."""
     if _present(file_value):
@@ -135,6 +141,8 @@ class Config:
 
     SERVER_HOST: str = _get("server", "host", "127.0.0.1")
     SERVER_PORT: int = _get("server", "port", 5000)
+    # Extra Host names a personal-mode server answers to (loopback is always allowed).
+    SERVER_ALLOWED_HOSTS: list[str] = _as_list(_get("server", "allowed_hosts") or _env("server", "allowed_hosts"))
 
     KAFKA_BOOTSTRAP_SERVERS: str = _get("kafka", "bootstrap_servers", "localhost:9092")
     KAFKA_CONNECT_URL: str       = _get("kafka_connect", "url", "http://localhost:8083")

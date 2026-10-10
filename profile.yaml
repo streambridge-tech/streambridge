@@ -7,6 +7,10 @@ server:
   host: "127.0.0.1"
   port: 5000
   debug: true
+  # Personal mode answers only to localhost, 127.0.0.1, [::1], and server.host.
+  # List any other host name you open it by. Left empty, StreamBridge reads
+  # STREAMBRIDGE__SERVER__ALLOWED_HOSTS (comma-separated).
+  allowed_hosts: []
 
 static:
   dir: static
