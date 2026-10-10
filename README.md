@@ -211,7 +211,7 @@ uv sync
 uv run pre-commit install
 uv run pre-commit run --all-files
 uv run python -m unittest discover -s tests -t .
-node --experimental-vm-modules --test tests/js/connector_modal.test.mjs
+node --experimental-vm-modules --test 'tests/js/*.test.mjs'
 uv run python build.py
 ```
 
