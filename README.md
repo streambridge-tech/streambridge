@@ -202,6 +202,26 @@ Found a security issue? Please report it privately to the maintainers rather tha
 - [Deploy on Kubernetes / Strimzi (local Docker Desktop)](sandbox/eks/local-strimzi/README.md)
 - [Deploy to Amazon EKS](sandbox/eks/README.md)
 
+## Contributing
+
+Fork the repository and open a pull request against `main`.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+python3 -m unittest discover -s tests -t .
+node --test tests/js/connector_modal.test.mjs
+python3 build.py
+```
+
+Raise `version` in `pyproject.toml` above the latest `v*` tag. CI rejects the pull request when the version is missing or not newer. After the pull request merges and CI passes, GitHub creates the tag `v<version>` and a GitHub Release. If that tag already exists, the release workflow fails.
+
+Contributions are accepted under the Apache License 2.0.
+
 ## License
 
 StreamBridge is open source under the [Apache License 2.0](LICENSE). Anyone may use, modify, and distribute it, and contributions sent to this project are accepted under the same license.
