@@ -97,8 +97,9 @@ def current_active_role_id():
 def _same_origin_ok() -> bool:
     origin = request.headers.get("Origin") or request.headers.get("Referer")
     if not origin:
-        # No Origin/Referer: rely on the SameSite=Lax session cookie to block
-        # cross-site cookie-bearing requests.
+        # Browsers send Origin on every request other than GET and HEAD (as
+        # "null" when they hide it, which fails below), so a request with
+        # neither header comes from a non-browser client such as curl.
         return True
     return urlparse(origin).netloc == request.host
 
