@@ -22,5 +22,4 @@ log.info("Connector registry loaded  connectors=%s", [f"{t}/{s}" for t, s in _RE
 
 def get(conn_type: str, subtype: str):
     """Return connector instance for (type, subtype), or None if not registered."""
-    print(f"Getting connector for type={conn_type}, subtype={subtype}")
     return _REGISTRY.get((conn_type.lower(), subtype.lower()))

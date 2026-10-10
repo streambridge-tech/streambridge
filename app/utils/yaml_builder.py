@@ -66,11 +66,21 @@ import re
 import json
 import os
 
-_VAR_RE  = re.compile(r"\{\{\s*var\s*\(\s*['\"](\w[\w-]*)['\"]")
-_CONN_RE = re.compile(r"\{\{\s*conn\s*\(\s*['\"]([^'\"]+)['\"]")
+from app.connectors.schemas import SECRET_MASK
+
+_VAR_RE  = re.compile(r"\{\{\s*var\s*\(\s*['\"](\w[\w-]*)['\"]\s*\)\s*\}\}")
+_CONN_RE = re.compile(r"\{\{\s*conn\s*\(\s*['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
 _ANY_RE  = re.compile(r"\{\{[^}]+\}\}")
 _CONN_MARKER_RE    = re.compile(r"\[connection:([^\]]+)\]")
 _ENV_VAR_MARKER_RE = re.compile(r'\$([A-Z_][A-Z0-9_]*)')
+
+# Values the seeded plugin configs use for "fill this in" (see seeds/plugins/).
+_PLACEHOLDERS = (None, "", "*******", SECRET_MASK)
+
+
+def _is_placeholder(value) -> bool:
+    """True when a config value is an unset/masked placeholder rather than a real value."""
+    return value in _PLACEHOLDERS
 
 
 def _extract_env_block(raw: str, env: str) -> str:
@@ -85,9 +95,12 @@ def _extract_env_block(raw: str, env: str) -> str:
 
 
 def _extract_top_block(raw: str, section: str) -> str:
-    """Return a top-level block (e.g. 'source:' or 'sink:') bounded to the next top-level key."""
+    """Return a top-level block (e.g. 'source:' or 'sink:') bounded to the next top-level key.
+
+    Indented lines, blank lines and column-0 comments belong to the block.
+    """
     m = re.search(
-        rf'^{re.escape(section)}\s*:\s*\n((?:[ \t]+.*\n?|\n)*)',
+        rf'^{re.escape(section)}[ \t]*:[ \t]*(?:#.*)?\r?\n((?:[ \t]+.*\n?|#.*\n?|\r?\n)*)',
         raw, re.MULTILINE
     )
     return m.group(0) if m else ""
@@ -112,6 +125,13 @@ def _strip_env_block(raw: str) -> str:
     return re.sub(r'^( {2}env:\s*\n)((?:[ \t]{4}[\s\S]*?\n)*)', '', raw, flags=re.MULTILINE)
 
 
+def _undefined_vars(raw: str, env: str) -> list[str]:
+    """Names used in {{ var('x') }} (outside the env: block) that have no value for this env."""
+    defined = _extract_env_vars(raw, env)
+    used = _VAR_RE.findall(_strip_env_block(raw))
+    return [name for name in dict.fromkeys(used) if name not in defined]
+
+
 def resolve_yaml(raw: str, env: str) -> str:
     """Substitute {{ var() }}, {{ conn() }}, {{ env_var() }} in the raw YAML."""
     vars_ = _extract_env_vars(raw, env)
@@ -125,10 +145,20 @@ def resolve_yaml(raw: str, env: str) -> str:
 
 
 def _section_config(raw: str, section: str) -> dict:
-    """Extract key:value pairs under source.config or sink.config block."""
+    """Extract key:value pairs under source.config or sink.config block.
+
+    Only a config: that is a direct child of the section counts (same indent
+    as type:/connector_name:). Its body ends at the first line that is not
+    indented deeper than config:; comment and blank lines do not end it.
+    """
+    block = _extract_top_block(raw, section)
+    child = re.search(r'^([ \t]+)[^\s#]', block, re.MULTILINE)
+    if not child:
+        return {}
+    indent = re.escape(child.group(1))
     m = re.search(
-        rf'^{section}:[\s\S]*?^\s+config:\s*\n((?:[ \t]+[\w.]+[ \t]*:[ \t]*[^\n]*\n?)+)',
-        raw, re.MULTILINE
+        rf'^{indent}config[ \t]*:[ \t]*(?:#.*)?\r?\n((?:{indent}[ \t]+.*\n?|[ \t]*#.*\n?|[ \t]*\r?\n)*)',
+        block, re.MULTILINE
     )
     if not m:
         return {}
@@ -150,6 +180,15 @@ def _parse_env_var_refs(resolved: str) -> list[str]:
     return list(dict.fromkeys(_ENV_VAR_MARKER_RE.findall(resolved)))
 
 
+def _plugin_config(plugin) -> dict | None:
+    """Return a plugin's stored config, or None when it is not a JSON object."""
+    try:
+        config = json.loads(plugin.config)
+    except (TypeError, ValueError):
+        return None
+    return config if isinstance(config, dict) else None
+
+
 def _fail(logs: list, errors: list) -> dict:
     for e in errors:
         logs.append({"level": "error", "text": e})
@@ -165,6 +204,7 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     from app.models.plugin import Plugin
     from app.models.connection import Connection
 
+    raw = raw.replace("\r\n", "\n")
     logs = []
 
     def log(level, text):
@@ -182,8 +222,6 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     snk_name  = (re.search(r'^\s+connector_name:\s*(\S+)', snk_block, re.MULTILINE) or [None,None])[1]
     src_plugin_name = (re.search(r'^\s+plugin:\s*(\S+)', src_block, re.MULTILINE) or [None,None])[1]
     snk_plugin_name = (re.search(r'^\s+plugin:\s*(\S+)', snk_block, re.MULTILINE) or [None,None])[1]
-    plugin_m  = re.search(r'plugin\.name\s*:\s*(\S+)', raw)
-    slot_m    = re.search(r'slot\.name\s*:\s*(\S+)', raw)
     schema_m  = re.search(r'schema\.registry\.url\s*:\s*(\S+)', raw)
     env_block = _extract_env_block(raw, env)
     kc_env_m  = re.search(r'^[ \t]{6}kafka[_.]connect\.connection\s*:\s*(\S+)', env_block, re.MULTILINE)
@@ -280,6 +318,15 @@ def build_pipeline(raw: str, env: str, db) -> dict:
 
     # ── Resolve {{ var() }} / {{ conn() }} / {{ env_var() }} ──────────────────
     log("info", "Resolving {{ var() }} and {{ conn() }} expressions…")
+    undefined = _undefined_vars(raw, env)
+    if undefined:
+        errors = []
+        for name in undefined:
+            errors += [
+                f"var('{name}') is not defined in pipeline.env.{env} or pipeline.vars",
+                f"Fix: add  {name}: <value>  under pipeline.env.{env}: or pipeline.vars:",
+            ]
+        return _fail(logs, errors)
     resolved   = resolve_yaml(raw, env or "")
     unresolved = _ANY_RE.findall(resolved)
     if unresolved:
@@ -352,8 +399,15 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     log("success", f'plugin (sink):   "{snk_plugin.name}" ({"explicit" if snk_plugin_name else "default"}, format={snk_plugin.format})  ✓')
 
     # ── Merge: plugin base ← YAML config: block ──────────────────────────────
-    src_base   = json.loads(src_plugin.config)
-    snk_base   = json.loads(snk_plugin.config)
+    src_base   = _plugin_config(src_plugin)
+    snk_base   = _plugin_config(snk_plugin)
+    plugin_errors = [
+        f"plugin '{plugin.name}' config is not a JSON object — fix it in the Plugins view"
+        for plugin, base in ((src_plugin, src_base), (snk_plugin, snk_base))
+        if base is None
+    ]
+    if plugin_errors:
+        return _fail(logs, plugin_errors)
     src_yaml   = _section_config(resolved, "source")
     snk_yaml   = _section_config(resolved, "sink")
     src_config = {**src_base, **src_yaml, "name": src_name}
@@ -381,9 +435,15 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     src_validator = get_connector("source", src_type)
     if src_validator:
         prefix_field = src_validator.TOPIC_PREFIX_FIELD or "topic.prefix"
-        prefix = src_config.get(prefix_field) or src_name
-        if not re.match(r'^[a-zA-Z0-9._-]+$', prefix or ""):
-            log("warn", f'connector_name "{src_name}" contains characters invalid for a Kafka topic prefix')
+        # Debezium requires a prefix. When it is unset or a plugin placeholder
+        # ("", "*******"), deploy with connector_name as the prefix.
+        if _is_placeholder(src_config.get(prefix_field)):
+            src_config[prefix_field] = src_name
+            checked = f'connector_name "{src_name}" (used as {prefix_field})'
+        else:
+            checked = f'{prefix_field} "{src_config[prefix_field]}"'
+        if not re.match(r'^[a-zA-Z0-9._-]+$', src_config[prefix_field]):
+            log("warn", f'{checked} contains characters invalid for a Kafka topic prefix')
             log("warn", f'Fix: set  {prefix_field}: <valid-prefix>  explicitly under source.config:')
         else:
             derived_topics = src_validator.derive_topics(src_config)

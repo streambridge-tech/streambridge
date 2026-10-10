@@ -1,12 +1,66 @@
 import unittest
 
-from tests.unit.yaml_builder._fixtures import build, error_texts, mysql_source_yaml
+from tests.unit.yaml_builder._fixtures import (
+    PLACEHOLDER_PLUGINS, build, error_texts, fake_db, mysql_source_yaml, postgres_source_yaml,
+)
 
 
 VALID_MYSQL_CONFIG = (
     "    database.server.name: ecommerce\n"
     "    table.include.list: ecommerce.orders"
 )
+
+
+def _texts(result, level):
+    return [log["text"] for log in result["logs"] if log["level"] == level]
+
+
+class MysqlTopicPrefixTests(unittest.TestCase):
+    """The seeded mysql-json plugin ships topic.prefix as a "*******" placeholder."""
+
+    def _build(self, raw):
+        result = build(raw, db=fake_db(plugins=list(PLACEHOLDER_PLUGINS)))
+        self.assertTrue(result["ok"], msg=f"expected ok; logs={result['logs']}")
+        return result
+
+    def test_placeholder_topic_prefix_falls_back_to_connector_name(self):
+        result = self._build(mysql_source_yaml(VALID_MYSQL_CONFIG))
+        self.assertEqual(_texts(result, "warn"), [])
+        self.assertIn("  → mysql-to-s3-source.ecommerce.orders", _texts(result, "success"))
+
+    def test_placeholder_topic_prefix_is_replaced_by_connector_name(self):
+        result = self._build(mysql_source_yaml(VALID_MYSQL_CONFIG))
+        self.assertEqual(result["sourceConfig"].get("topic.prefix"), "mysql-to-s3-source")
+
+    def test_empty_postgres_topic_prefix_is_replaced_by_connector_name(self):
+        result = self._build(postgres_source_yaml(
+            "    database.server.name: ecommerce\n"
+            "    table.include.list: public.orders"
+        ))
+        self.assertEqual(result["sourceConfig"].get("topic.prefix"), "pg-to-s3-source")
+
+    def test_missing_topic_prefix_is_set_to_connector_name(self):
+        result = build(mysql_source_yaml(VALID_MYSQL_CONFIG))
+        self.assertTrue(result["ok"], msg=f"expected ok; logs={result['logs']}")
+        self.assertEqual(result["sourceConfig"].get("topic.prefix"), "mysql-to-s3-source")
+
+    def test_yaml_topic_prefix_replaces_the_placeholder(self):
+        result = self._build(mysql_source_yaml(VALID_MYSQL_CONFIG + "\n    topic.prefix: shop"))
+        self.assertEqual(result["sourceConfig"]["topic.prefix"], "shop")
+        self.assertIn("  → shop.ecommerce.orders", _texts(result, "success"))
+
+    def test_invalid_topic_prefix_warning_names_the_field_and_value(self):
+        result = self._build(mysql_source_yaml(VALID_MYSQL_CONFIG + "\n    topic.prefix: bad/prefix"))
+        warnings = _texts(result, "warn")
+        self.assertTrue(any('topic.prefix "bad/prefix"' in w for w in warnings), msg=warnings)
+        self.assertFalse(any("connector_name" in w for w in warnings), msg=warnings)
+
+    def test_invalid_connector_name_warning_names_connector_name(self):
+        raw = mysql_source_yaml(VALID_MYSQL_CONFIG).replace(
+            "connector_name: mysql-to-s3-source", "connector_name: mysql:source",
+        )
+        warnings = _texts(self._build(raw), "warn")
+        self.assertTrue(any('connector_name "mysql:source"' in w for w in warnings), msg=warnings)
 
 
 class MysqlSourceCompileTests(unittest.TestCase):

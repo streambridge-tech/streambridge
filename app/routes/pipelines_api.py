@@ -5,48 +5,110 @@ from app.utils.db import SessionLocal
 from app.models.pipeline import Pipeline
 from app.models.connector_config import ConnectorConfig
 from app.models.alert import Alert
-from app.utils.yaml_builder import build_pipeline
+from app.utils.yaml_builder import _extract_top_block, build_pipeline
 from app.services.connect.orchestrator import deploy_pipeline
 from app.utils.auth import require
 
 
+# `alert:` under source:/sink: plus every line indented deeper than it.
+_ALERT_BLOCK_RE = re.compile(r'^([ \t]+)alert[ \t]*:[^\n]*\n?((?:\1[ \t]+[^\n]*\n?|[ \t]*\n)*)', re.MULTILINE)
+_DEFAULT_ALERT_ATTEMPTS = 3
+
+
+def _alert_blocks(yaml_raw: str) -> dict[str, str]:
+    """Return {"source"|"sink": alert block text} for the sections that define an alert:."""
+    yaml_raw = yaml_raw.replace("\r\n", "\n")
+    blocks = {}
+    for side in ("source", "sink"):
+        m = _ALERT_BLOCK_RE.search(_extract_top_block(yaml_raw, side))
+        if m:
+            blocks[side] = m.group(2)
+    return blocks
+
+
+def _alert_value(block: str, key: str, value_re: str = r'[^\s#]+') -> str | None:
+    m = re.search(rf'^[ \t]*{key}[ \t]*:[ \t]*({value_re})', block, re.MULTILINE)
+    return m.group(1).strip().strip('"').strip("'") if m else None
+
+
+def _alert_attempts_error(yaml_raw: str) -> str | None:
+    """Return an error message when an alert's attempts is not a positive whole number."""
+    for side, block in _alert_blocks(yaml_raw).items():
+        attempts = _alert_value(block, "attempts")
+        if attempts is not None and not (attempts.isdigit() and int(attempts) > 0):
+            return f"{side}.alert.attempts must be a positive whole number, got '{attempts}'"
+    return None
+
+
 def _extract_alerts_from_yaml(yaml_raw: str, pipeline_id: str, pipeline_name: str,
                                src_connector: str, snk_connector: str) -> list[Alert]:
-    """Parse alert: blocks from source/sink sections and return Alert instances."""
-    alerts = []
+    """Parse alert: blocks from source/sink sections and return Alert instances.
 
-    def _parse_block(section_text: str, connector_name: str, connector_type: str):
-        if not re.search(r'alert\s*:', section_text):
-            return
-        type_m    = re.search(r'type\s*:\s*([^\s#\n]+)', section_text)
-        chan_m    = re.search(r'channel_name\s*:\s*([^\s#\n]+)', section_text)
-        msg_m     = re.search(r'message\s*:\s*([^\n#]+)', section_text)
-        sev_m     = re.search(r'severity\s*:\s*([^\s#\n]+)', section_text)
-        retry_m   = re.search(r'attempts\s*:\s*([^\s#\n]+)', section_text)
+    Callers validate attempts first with _alert_attempts_error().
+    """
+    alerts = []
+    connectors = {"source": src_connector, "sink": snk_connector}
+    for side, block in _alert_blocks(yaml_raw).items():
+        connector_name = connectors[side]
+        if not connector_name:
+            continue
+        attempts = _alert_value(block, "attempts")
         alerts.append(Alert(
             name=f"{connector_name}-alert",
             connector_name=connector_name,
-            connector_type=connector_type,
+            connector_type=side,
             pipeline_id=pipeline_id,
             pipeline_name=pipeline_name,
             condition_metric="connector_status",
             condition_op="eq",
             condition_value="FAILED",
-            severity=sev_m.group(1).strip() if sev_m else "high",
-            channel_type=type_m.group(1).strip() if type_m else "slack",
-            channel_name=chan_m.group(1).strip() if chan_m else "",
-            message=msg_m.group(1).strip() if msg_m else "",
-            attempts=int(retry_m.group(1).strip()) if retry_m else 3,
+            severity=_alert_value(block, "severity") or "high",
+            channel_type=_alert_value(block, "type") or "slack",
+            channel_name=_alert_value(block, "channel_name") or "",
+            message=_alert_value(block, "message", r'[^\n#]+') or "",
+            attempts=int(attempts) if attempts else _DEFAULT_ALERT_ATTEMPTS,
             state="unknown",
         ))
-
-    src_m = re.search(r'^source:[\s\S]*?(?=^(?:kafka|transforms|sink|on_failure|\Z))', yaml_raw, re.MULTILINE)
-    snk_m = re.search(r'^sink:[\s\S]*?(?=^(?:on_failure|\Z))', yaml_raw, re.MULTILINE)
-    if src_m and src_connector:
-        _parse_block(src_m.group(0), src_connector, "source")
-    if snk_m and snk_connector:
-        _parse_block(snk_m.group(0), snk_connector, "sink")
     return alerts
+
+
+def _bad_request(message: str):
+    return jsonify({"ok": False, "error": message}), 400
+
+
+def _yaml_request() -> tuple[str, str, str | None]:
+    """Read yamlRaw/env from a build or deploy body. Returns (raw, env, error)."""
+    data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return "", "", "Request body must be a JSON object"
+    raw = data.get("yamlRaw") or ""
+    env = data.get("env") or ""
+    if not isinstance(raw, str) or not isinstance(env, str):
+        return "", "", "yamlRaw and env must be strings"
+    return raw, env, None
+
+
+def _create_request_error(data) -> str | None:
+    """Validate a POST /api/pipelines body before anything is written."""
+    if not isinstance(data, dict):
+        return "Request body must be a JSON object"
+    name = data.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return "name is required"
+    for field in ("env", "yamlRaw", "yamlResolved"):
+        if not isinstance(data.get(field) or "", str):
+            return f"{field} must be a string"
+    connectors = data.get("connectors") or []
+    if not isinstance(connectors, list):
+        return "connectors must be a list"
+    for i, connector in enumerate(connectors):
+        if not isinstance(connector, dict):
+            return f"connectors[{i}] must be an object"
+        for field in ("connectorName", "type"):
+            value = connector.get(field)
+            if not isinstance(value, str) or not value.strip():
+                return f"connectors[{i}].{field} is required"
+    return _alert_attempts_error(data.get("yamlRaw") or "")
 
 pipelines_api = Blueprint("pipelines_api", __name__, url_prefix="/api")
 
@@ -54,9 +116,10 @@ pipelines_api = Blueprint("pipelines_api", __name__, url_prefix="/api")
 @pipelines_api.post("/pipelines/build")
 @require("connector.validate")
 def build():
-    data = request.get_json(force=True)
-    raw  = data.get("yamlRaw", "")
-    env  = data.get("env", "") or ""
+    raw, env, error = _yaml_request()
+    error = error or _alert_attempts_error(raw)
+    if error:
+        return _bad_request(error)
     with SessionLocal() as db:
         result = build_pipeline(raw, env, db)
     return jsonify(result), 200 if result["ok"] else 422
@@ -65,9 +128,11 @@ def build():
 @pipelines_api.post("/pipelines/deploy")
 @require("connector.deploy")
 def deploy():
-    data = request.get_json(force=True)
-    raw  = data.get("yamlRaw", "")
-    env  = data.get("env", "") or ""
+    raw, env, error = _yaml_request()
+    # Alerts are saved after the connectors deploy, so check them before deploying.
+    error = error or _alert_attempts_error(raw)
+    if error:
+        return _bad_request(error)
     with SessionLocal() as db:
         build_result = build_pipeline(raw, env, db)
         if not build_result["ok"]:
@@ -94,12 +159,15 @@ def deploy():
 @require("connector.create")
 def create_pipeline():
     data = request.get_json(force=True)
+    error = _create_request_error(data)
+    if error:
+        return _bad_request(error)
     with SessionLocal() as db:
         pipeline = Pipeline(
             name=data["name"],
-            env=data.get("env", ""),
-            yaml_raw=data.get("yamlRaw", ""),
-            yaml_resolved=data.get("yamlResolved", ""),
+            env=data.get("env") or "",
+            yaml_raw=data.get("yamlRaw") or "",
+            yaml_resolved=data.get("yamlResolved") or "",
             status="deploying",
         )
         db.add(pipeline)
@@ -107,12 +175,12 @@ def create_pipeline():
 
         src_connector_name = ""
         snk_connector_name = ""
-        for connector in data.get("connectors", []):
+        for connector in data.get("connectors") or []:
             db.add(ConnectorConfig(
                 pipeline_id=pipeline.id,
                 connector_name=connector["connectorName"],
                 type=connector["type"],
-                plugin_name=connector.get("pluginName", ""),
+                plugin_name=connector.get("pluginName") or "",
                 config=json.dumps(connector.get("config", {})),
             ))
             if connector["type"] == "source":
@@ -121,7 +189,7 @@ def create_pipeline():
                 snk_connector_name = connector["connectorName"]
 
         for alert in _extract_alerts_from_yaml(
-            data.get("yamlRaw", ""), pipeline.id, pipeline.name,
+            pipeline.yaml_raw, pipeline.id, pipeline.name,
             src_connector_name, snk_connector_name
         ):
             db.add(alert)
@@ -192,7 +260,7 @@ def _mock_sample_rows(limit: int, seed: str) -> list[list]:
 @pipelines_api.get("/pipelines/id/<pipeline_id>/connectors/<name>/sample")
 @require("connector.read")
 def sample_connector_rows(pipeline_id: str, name: str):
-    limit = min(int(request.args.get("limit", 10) or 10), 100)
+    limit = max(1, min(request.args.get("limit", 10, type=int) or 10, 100))
     with SessionLocal() as db:
         pipeline = db.get(Pipeline, pipeline_id)
         if not pipeline:
@@ -220,6 +288,10 @@ def sample_connector_rows(pipeline_id: str, name: str):
 @require("connector.save")
 def update_pipeline(name: str):
     data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return _bad_request("Request body must be a JSON object")
+    if "status" in data and not (isinstance(data["status"], str) and data["status"].strip()):
+        return _bad_request("status must be a non-empty string")
     with SessionLocal() as db:
         pipeline = db.query(Pipeline).filter(Pipeline.name == name).order_by(Pipeline.created_at.desc()).first()
         if not pipeline:

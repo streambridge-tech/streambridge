@@ -93,7 +93,7 @@ Prefer the terminal, or locked out of a team workspace? `python3 manage.py admin
 ## Workspace modes and roles
 
 - **Personal** runs with no gate — the single owner can do everything.
-- **Team** enforces role‑based access on every page and API call. Permissions deny by default; you only get what a role grants.
+- **Team** requires sign‑in, and every API call checks a role permission, except reading Plugins, `/api/health`, and a user's own `/api/auth/*` calls (session, role switch, password), which only need sign‑in. Permissions deny by default; you only get what a role grants.
 
 Three built‑in roles ship, each inheriting the one before it:
 
@@ -184,7 +184,7 @@ Team mode is built deny‑by‑default:
 
 - **Passwords** are hashed with Argon2id — never stored or logged in plaintext.
 - **Sessions** use signed, `HttpOnly`, `SameSite=Lax` cookies. Set `auth.cookie_secure: true` when serving over HTTPS.
-- **RBAC** is enforced on every page and API route (no permission, no access). The superuser flag exists only for recovery.
+- **RBAC** is checked on every API route (no permission, no access). Reading Plugins, `/api/health`, and a user's own `/api/auth/*` calls (session, role switch, password) only need sign‑in. The Plugins, Admin, RCA, Pipelines, and Docs pages are served to any signed‑in user; what each page can read or change is still limited by those API checks. The superuser flag exists only for recovery.
 - **Mutating requests** are same‑origin checked (CSRF defense).
 - **Audit log** records who deployed, paused, or deleted.
 - **Secrets** live in vaults and are referenced by token (`{bag.key}`). They are masked in the UI and kept out of logs (configs log key names only, never values). They are stored in the StreamBridge database, so protect that database and wire in an external secrets manager for production.

@@ -17,6 +17,18 @@ def _valid_slug(name: str) -> bool:
     return bool(_SLUG_RE.match(name)) if name else False
 
 
+def _parse_config(config) -> tuple[dict | None, str | None]:
+    """Accept a config object or its JSON text. Returns (config, error)."""
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except json.JSONDecodeError as e:
+            return None, f"Invalid JSON in 'config': {e}"
+    if not isinstance(config, dict):
+        return None, "'config' must be a JSON object"
+    return config, None
+
+
 @plugins_api.get("/plugins")
 def list_plugins():
     with SessionLocal() as db:
@@ -41,6 +53,8 @@ def get_plugin(name: str):
 @require("plugin.create")
 def create_plugin():
     data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
 
     name = (data.get("name") or "").strip().lower()
     if not _valid_slug(name):
@@ -53,12 +67,9 @@ def create_plugin():
     if data["type"] not in ("source", "sink"):
         return jsonify({"error": "type must be 'source' or 'sink'"}), 400
 
-    config = data["config"]
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except json.JSONDecodeError as e:
-            return jsonify({"error": f"Invalid JSON in 'config': {e}"}), 400
+    config, error = _parse_config(data["config"])
+    if error:
+        return jsonify({"error": error}), 400
 
     with SessionLocal() as db:
         plugin = Plugin(
@@ -93,19 +104,18 @@ def update_plugin(name: str):
             return jsonify({"error": "Built-in plugins cannot be edited"}), 403
 
         data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return jsonify({"error": "Request body must be a JSON object"}), 400
+
+        if "config" in data:
+            config, error = _parse_config(data["config"])
+            if error:
+                return jsonify({"error": error}), 400
+            plugin.config = json.dumps(config)
 
         for field in ("db", "type", "format", "description"):
             if field in data:
                 setattr(plugin, field, data[field])
-
-        if "config" in data:
-            config = data["config"]
-            if isinstance(config, str):
-                try:
-                    config = json.loads(config)
-                except json.JSONDecodeError as e:
-                    return jsonify({"error": f"Invalid JSON in 'config': {e}"}), 400
-            plugin.config = json.dumps(config)
 
         db.commit()
         db.refresh(plugin)

@@ -1,6 +1,8 @@
 import unittest
 
-from tests.unit.yaml_builder._fixtures import build, error_texts, postgres_source_yaml
+from tests.unit.yaml_builder._fixtures import (
+    DEFAULT_PLUGINS, FakePlugin, build, error_texts, fake_db, postgres_source_yaml,
+)
 
 
 VALID_PG_CONFIG = (
@@ -51,6 +53,21 @@ class PluginSelectionTests(unittest.TestCase):
             "  type: postgres\n  plugin: postgres-does-not-exist\n  connector_name: pg-to-s3-source",
         )
         self._assert_failed_with(build(raw), "'postgres-does-not-exist' not found")
+
+    def test_plugin_config_that_is_not_an_object_fails_the_build(self):
+        for stored in ([1], 5, None):
+            with self.subTest(stored=stored):
+                plugins = [p for p in DEFAULT_PLUGINS if p.name != "postgres-json"]
+                plugins.append(FakePlugin("postgres-json", "source", "JSON", stored))
+                result = build(postgres_source_yaml(VALID_PG_CONFIG), db=fake_db(plugins=plugins))
+                self._assert_failed_with(result, "plugin 'postgres-json' config is not a JSON object")
+
+    def test_plugin_config_that_is_not_json_fails_the_build(self):
+        broken = FakePlugin("s3-json", "sink", "JSON", {})
+        broken.config = "{not json"
+        plugins = [p for p in DEFAULT_PLUGINS if p.name != "s3-json"] + [broken]
+        result = build(postgres_source_yaml(VALID_PG_CONFIG), db=fake_db(plugins=plugins))
+        self._assert_failed_with(result, "plugin 's3-json' config is not a JSON object")
 
 
 class AvroSchemaRegistryShapeTests(unittest.TestCase):

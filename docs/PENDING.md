@@ -1,8 +1,8 @@
 # Pending
 
-Open work for StreamBridge 0.1.0. Pick a number and do that item. Do not start the Later list until the Now list is done.
+Open work for StreamBridge. Pick a number and do that item. Do not start the Later list until the Now list is done.
 
-Status on every item below is open.
+Items below are open unless marked Done or Partly done.
 
 ## Rough Notes
 2. when clone the connector then not showing the save button instantly
@@ -13,8 +13,8 @@ Status on every item below is open.
 
 2.5 logging enables
 
-2.6 for streambridge db pass and username set hardcode in profile.yml
-2.7 focus on Alerts are wired to the wrong list. A policy is supposed to belong to one connector. The New picker still loads /api/pipelines, and pipelines are parked. A new alert cannot be aimed at the connector you just deployed.
+2.6 Done (item 7). The StreamBridge database user and password are no longer hardcoded in profile.yaml.
+2.7 Done (item 8). A policy belongs to one connector. The New picker loads /api/notebooks/, not /api/pipelines, so a new alert can be aimed at the connector you just deployed.
 
 
 3. check end to end test case
@@ -41,11 +41,11 @@ Status on every item below is open.
 6. **Turn logging on for real use.** `profile.yaml` has a log level. Make the running app write useful deploy, test, and alert lines, and keep secret values out of those lines.
 7. **Stop hardcoding the StreamBridge database user and password.** Done. `profile.yaml` has PostgreSQL and MySQL fields. A filled value is used. A blank field is read from `STREAMBRIDGE__DATABASE__MYSQL__*` or `STREAMBRIDGE__DATABASE__POSTGRESQL__*`, or from an optional `.env`.
 8. **Point alerts at connectors.** Done. A new policy loads `/api/notebooks/` and stores `notebookId`. The checker uses that notebook's name and attached cluster. Pipelines are not the target.
-9. **App has no login.** Anyone who can open port 5000 can deploy, pause, delete, and read configs, including a Kubernetes token. Login and roles are the Later item named RBAC. Until that exists, say so in the docs and do not pretend the UI is private.
+9. **App has no login.** Done in team mode: sign-in and roles ship (item 20). Personal mode still has no gate by design, so anyone who can open its port can deploy, pause, delete, and read configs.
 10. **Secrets are only masked on screen.** Vault values and connector passwords sit in the StreamBridge database. Remove any secret that is still committed: passwords, tokens, keys, and connection strings in the tree and in git history where a current file still has them.
 11. **Kubernetes deploy gives up too early.** After a Strimzi create, Connect status stays unknown until the operator reconciles. The wait is about 20 seconds, then the deploy is reported failed even if the connector comes up later. Keep polling until the connector exists or a real error comes back.
 12. **The alert checker dies with the Flask process.** It runs inside `main.py`. Stopping the process stops alerts. Two processes can fire the same rule twice.
-13. **No audit.** A deploy, pause, or delete does not record who did it.
+13. **No audit.** Partly done. The audit log records who deployed or deleted a connector and who ran a Connect pause, resume, restart, offset reset, or delete. Pipeline deploys and plugin and connection changes are not recorded yet.
 
 ## Prove it
 
@@ -70,4 +70,4 @@ Pick these after the Now list. Order inside this list is not a promise.
 
 18. **RCA.** Its own Phase 2 rail entry. The page stays, and it is not a deploy path.
 19. **Pipelines.** Same rail section as RCA. Connectors remain the deploy path until this is chosen.
-20. **RBAC.** Login, roles, and who is allowed to deploy or read secrets. This is the real fix for item 9.
+20. **RBAC.** Done. Team mode has login, built-in roles (Public, Operator, Admin), and permission checks on API routes. This is the fix for item 9.
