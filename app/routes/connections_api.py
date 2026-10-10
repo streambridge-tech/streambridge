@@ -25,6 +25,17 @@ def _retired_connection_error(conn_type: str, subtype: str):
     return None
 
 
+def _invalid_kind_error(data: dict, *, required: bool):
+    """`type` and `subtype` must be non-empty strings when sent (always, if required)."""
+    for field in ("type", "subtype"):
+        if field not in data and not required:
+            continue
+        value = data.get(field)
+        if not isinstance(value, str) or not value.strip():
+            return jsonify({"error": f"'{field}' must be a non-empty string"}), 400
+    return None
+
+
 @connections_api.get("/connector-schemas")
 @require("connection.read")
 def list_schemas():
@@ -68,6 +79,9 @@ def create_connection():
     for field in ("name", "type", "subtype"):
         if not data.get(field):
             return jsonify({"error": f"Missing required field: '{field}'"}), 400
+    invalid = _invalid_kind_error(data, required=True)
+    if invalid:
+        return invalid
 
     retired = _retired_connection_error(data.get("type"), data.get("subtype"))
     if retired:
@@ -126,6 +140,9 @@ def create_connection():
 @require("connection.save")
 def update_connection(conn_id: int):
     data = request.get_json(silent=True) or {}
+    invalid = _invalid_kind_error(data, required=False)
+    if invalid:
+        return invalid
     extra = data.get("extra", {})
     if isinstance(extra, str):
         try:
@@ -204,6 +221,9 @@ def delete_connection(conn_id: int):
 @require("connection.test")
 def test_connection():
     data = request.get_json(silent=True) or {}
+    invalid = _invalid_kind_error(data, required=False)
+    if invalid:
+        return invalid
     conn_type = (data.get("type") or "").lower()
     subtype = (data.get("subtype") or "").lower()
     retired = _retired_connection_error(conn_type, subtype)
