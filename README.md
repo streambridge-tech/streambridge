@@ -204,6 +204,6 @@ Found a security issue? Please report it privately to the maintainers rather tha
 
 ## License
 
-StreamBridge is **proprietary** — Copyright © 2026 StreamBridge, all rights reserved. No permission is granted to copy, modify, merge, publish, distribute, sublicense, or sell the software except by written agreement with StreamBridge.
+StreamBridge is open source under the [Apache License 2.0](LICENSE). Anyone may use, modify, and distribute it, and contributions sent to this project are accepted under the same license.
 
-Third‑party components it runs against keep their own licenses — Apache Kafka, Kafka Connect, Debezium, Strimzi, and the Python packages listed in `pyproject.toml`. See [LICENSE](LICENSE) for the full text.
+Third-party components it runs against keep their own licenses — Apache Kafka, Kafka Connect, Debezium, Strimzi, and the Python packages listed in `pyproject.toml`.
