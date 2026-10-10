@@ -69,7 +69,8 @@ class TestAppendLog(_NotebooksApiCase):
 
     def test_non_numeric_values_are_rejected(self):
         for body in ({"http": "abc"}, {"timeMs": "abc"}, {"http": [200]}, {"timeMs": {"ms": 1}},
-                     {"http": True}, {"timeMs": "NaN"}, {"timeMs": "inf"}):
+                     {"http": True}, {"timeMs": "NaN"}, {"timeMs": "inf"}, {"timeMs": "1e30"},
+                     {"http": 2**31}, {"timeMs": -2**31 - 1}):
             r = self._post(**body)
             self.assertEqual(r.status_code, 400, body)
             self.assertIn("error", r.get_json())

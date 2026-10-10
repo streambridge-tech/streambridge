@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify, request
-
 import math
 from datetime import datetime, timezone
+
+from flask import Blueprint, jsonify, request
 
 from app.models.connector_command_log import ConnectorCommandLog
 from app.models.connector_notebook import ConnectorNotebook
@@ -29,6 +29,9 @@ def _logs(db, notebook_id: str, limit: int = 100):
     return [row.to_dict() for row in rows]
 
 
+_INT_LIMIT = 2**31 - 1  # fits an Integer column on every supported database
+
+
 def _whole_number(value) -> int | None:
     """None for a missing value; numbers and numeric strings become ints, anything else is a ValueError."""
     if value is None or value == "":
@@ -36,8 +39,8 @@ def _whole_number(value) -> int | None:
     if isinstance(value, bool) or not isinstance(value, (int, float, str)):
         raise ValueError(f"Not a number: {value!r}")
     number = float(value)  # ValueError for a non-numeric string
-    if not math.isfinite(number):
-        raise ValueError(f"Not a finite number: {value!r}")
+    if not math.isfinite(number) or abs(number) > _INT_LIMIT:
+        raise ValueError(f"Number out of range: {value!r}")
     return int(number)
 
 
