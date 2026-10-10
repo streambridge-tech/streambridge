@@ -15,6 +15,7 @@ _DB_KEYS = (
     "STREAMBRIDGE__DATABASE__MYSQL__DATABASE",
     "STREAMBRIDGE__DATABASE__MYSQL__USERNAME",
     "STREAMBRIDGE__DATABASE__MYSQL__PASSWORD",
+    "STREAMBRIDGE__DATABASE__SQLITE__PATH",
 )
 
 
@@ -46,9 +47,12 @@ class TestDatabaseEnv(unittest.TestCase):
     def test_yaml_value_wins_over_env(self):
         os.environ["STREAMBRIDGE__DATABASE__BACKEND"] = "mysql"
         os.environ["STREAMBRIDGE__DATABASE__SQLITE__PATH"] = "/tmp/other.db"
-        url = get_database_url()
-        self.assertTrue(url.startswith("sqlite:///"))
-        self.assertNotIn("other.db", url)
+        with tempfile.TemporaryDirectory() as tmp:
+            yaml_path = str(Path(tmp) / "from-yaml.db")
+            profile = {"database": {"backend": "sqlite", "sqlite": {"path": yaml_path}}}
+            with patch("app.utils.config._profile", profile):
+                url = get_database_url()
+        self.assertEqual(url, f"sqlite:///{yaml_path}")
 
     def test_blank_yaml_uses_env_password(self):
         os.environ["STREAMBRIDGE__DATABASE__MYSQL__HOST"] = "db.internal"
