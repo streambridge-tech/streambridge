@@ -238,6 +238,12 @@ class RestBackendTransportTests(unittest.TestCase):
                 expected = (kafka_connect._verify(config), kafka_connect._timeout(config))
                 self.assertEqual(self._transport(), {expected}, config)
 
+    def test_zero_or_negative_timeout_becomes_one_second(self):
+        for timeout in ("0", "-5", -2):
+            self.fake.calls.clear()
+            RestBackend({"url": self.URL, "timeout": timeout}).exists("pg")
+            self.assertEqual(self._transport(), {(True, 1)}, timeout)
+
     def test_validate_transport_failure_becomes_a_runtime_error(self):
         backend = RestBackend({"url": self.URL})
         with patch.object(backend, "validate_config",

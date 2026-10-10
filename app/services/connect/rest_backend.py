@@ -13,9 +13,9 @@ def verify_ssl(kc_config: dict) -> bool:
 
 
 def request_timeout(kc_config: dict) -> int:
-    """`timeout` seconds from a Kafka Connect connection, or the default."""
+    """`timeout` seconds from a Kafka Connect connection (at least 1), or the default."""
     try:
-        return int(kc_config.get("timeout") or DEFAULT_TIMEOUT)
+        return max(1, int(kc_config.get("timeout") or DEFAULT_TIMEOUT))
     except (TypeError, ValueError):
         return DEFAULT_TIMEOUT
 
