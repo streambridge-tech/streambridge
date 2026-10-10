@@ -33,6 +33,21 @@ class ServerConfigTests(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
+    def test_host_and_port_defaults(self):
+        cfg = self._load("server: {}\n").Config
+        self.assertEqual((cfg.SERVER_HOST, cfg.SERVER_PORT), ("127.0.0.1", 5000))
+
+    def test_host_and_port_from_profile(self):
+        cfg = self._load('server:\n  host: "0.0.0.0"\n  port: 5302\n').Config
+        self.assertEqual((cfg.SERVER_HOST, cfg.SERVER_PORT), ("0.0.0.0", 5302))
+
+    def test_host_and_port_from_env_when_profile_blank(self):
+        cfg = self._load(
+            'server:\n  host: ""\n  port:\n',
+            {"STREAMBRIDGE__SERVER__HOST": "10.0.0.5", "STREAMBRIDGE__SERVER__PORT": "5302"},
+        ).Config
+        self.assertEqual((cfg.SERVER_HOST, cfg.SERVER_PORT), ("10.0.0.5", 5302))
+
     def test_allowed_hosts_default_empty(self):
         self.assertEqual(self._load("server: {}\n").Config.SERVER_ALLOWED_HOSTS, [])
 

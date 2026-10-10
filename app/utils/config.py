@@ -140,8 +140,8 @@ class Config:
     APP_NAME: str    = _get("app", "name", "StreamBridge")
     APP_VERSION: str = _get("app", "version", "0.1.0")
 
-    SERVER_HOST: str = _get("server", "host", "127.0.0.1")
-    SERVER_PORT: int = _get("server", "port", 5000)
+    SERVER_HOST: str = str(_prefer(_get("server", "host"), _env("server", "host"), "127.0.0.1"))
+    SERVER_PORT: int = int(_prefer(_get("server", "port"), _env("server", "port"), 5000))
     # Extra Host names a personal-mode server answers to (loopback is always allowed).
     SERVER_ALLOWED_HOSTS: list[str] = _as_list(_get("server", "allowed_hosts") or _env("server", "allowed_hosts"))
 

@@ -22,7 +22,9 @@ Put the internal database in `profile.yaml`. Set `database.backend` to `sqlite`,
 
 Leave a field blank if you would rather not store it in the file. StreamBridge then reads `STREAMBRIDGE__DATABASE__*` from the environment, or from `.env` when that file exists. A value already written in `profile.yaml` is kept.
 
-`server.port` is `5000`. `kafka_connect.url` in `profile.yaml` is only a default. Each environment uses the Kafka Connect connection you save in the UI.
+`python3 main.py` listens on `server.host` and `server.port`, `127.0.0.1` and `5000` by default. Leave `server.debug` at `false`. It turns on the Werkzeug debugger, which runs any code typed into an error page. In personal mode StreamBridge answers only to `localhost`, `127.0.0.1`, `[::1]`, and `server.host`. Add any other host name you open it by to `server.allowed_hosts`.
+
+`kafka_connect.url` in `profile.yaml` is only a default. Each environment uses the Kafka Connect connection you save in the UI.
 
 ## Run
 

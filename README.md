@@ -53,7 +53,7 @@ uv run main.py
 Settings live in `profile.yaml`.
 
 - **Database.** Set `database.backend` to `sqlite`, `mysql`, or `postgresql`, then fill that backend's host, database, username, and password. Leave a field blank to read it from `STREAMBRIDGE__DATABASE__*` in the environment (or an optional `.env`; see `.env.example`). A value already in the file is kept. SQLite needs nothing.
-- **Server.** `server.port` defaults to `5000`. In personal mode the server answers only to `localhost`, `127.0.0.1`, `[::1]`, and `server.host`; list any other host name you open it by in `server.allowed_hosts`.
+- **Server.** `python3 main.py` listens on `server.host` (default `127.0.0.1`) and `server.port` (default `5000`). `server.debug` (default `false`) turns on the Werkzeug debugger and reloader, so keep it off on any host others can reach. Blank fields read `STREAMBRIDGE__SERVER__*`. In personal mode the server answers only to `localhost`, `127.0.0.1`, `[::1]`, and `server.host`; list any other host name you open it by in `server.allowed_hosts`.
 - **Kafka Connect.** `kafka_connect.url` is only a default — each environment uses the Kafka Connect connection you save in the UI.
 
 ### Session key
