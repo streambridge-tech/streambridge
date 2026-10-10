@@ -15,7 +15,7 @@ from app.models.connector_config import ConnectorConfig
 from app.models.pipeline import Pipeline
 from app.services.connect.factory import deployment_of, get_backend
 from app.services.connect.rest_backend import ConfigValidationError
-from app.utils.yaml_builder import _extract_env_block, _extract_top_block, is_placeholder, resolve_yaml
+from app.utils.yaml_builder import _extract_env_block, _extract_top_block, _section_config, resolve_yaml
 
 
 POLL_INTERVAL_SEC = 2
@@ -48,13 +48,18 @@ def _fetch_connection(db, name: str) -> Connection | None:
     return db.query(Connection).filter(Connection.name == name).first()
 
 
-def _inject_creds(config: dict, connection: Connection | None) -> dict:
+def _inject_creds(config: dict, connection: Connection | None, yaml_config: dict) -> dict:
+    """Layer plugin base < connection < the section's own YAML config.
+
+    `config` is the built config (plugin base + YAML); `yaml_config` is the YAML
+    part alone, re-applied so it still wins over the connection.
+    """
     if not connection or not connection.config:
         return config
-    # Real config values (plugin base + YAML) win over connection values; plugin
-    # placeholders ("", "*******", the secret mask) do not.
-    real = {k: v for k, v in config.items() if not is_placeholder(v)}
-    return {**config, **connection.config, **real}
+    merged = {**config, **connection.config, **yaml_config}
+    if "name" in config:
+        merged["name"] = config["name"]
+    return merged
 
 
 def poll_until_running(
@@ -149,16 +154,18 @@ def deploy_pipeline(
 
     src_deployed = dict(build_result["sourceConfig"])
     snk_deployed = dict(build_result["sinkConfig"])
+    src_yaml     = _section_config(resolved, "source")
+    snk_yaml     = _section_config(resolved, "sink")
 
     for role in _SOURCE_ROLES:
         conn_name = _extract_side_conn_name(src_block, role)
         if conn_name:
-            src_deployed = _inject_creds(src_deployed, _fetch_connection(db, conn_name))
+            src_deployed = _inject_creds(src_deployed, _fetch_connection(db, conn_name), src_yaml)
             log("info", f"source {role}.connection: injected credentials from '{conn_name}'")
     for role in _SINK_ROLES:
         conn_name = _extract_side_conn_name(snk_block, role)
         if conn_name:
-            snk_deployed = _inject_creds(snk_deployed, _fetch_connection(db, conn_name))
+            snk_deployed = _inject_creds(snk_deployed, _fetch_connection(db, conn_name), snk_yaml)
             log("info", f"sink {role}.connection: injected credentials from '{conn_name}'")
 
     pipeline = Pipeline(

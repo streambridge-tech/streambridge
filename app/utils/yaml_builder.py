@@ -78,7 +78,7 @@ _ENV_VAR_MARKER_RE = re.compile(r'\$([A-Z_][A-Z0-9_]*)')
 _PLACEHOLDERS = (None, "", "*******", SECRET_MASK)
 
 
-def is_placeholder(value) -> bool:
+def _is_placeholder(value) -> bool:
     """True when a config value is an unset/masked placeholder rather than a real value."""
     return value in _PLACEHOLDERS
 
@@ -411,7 +411,7 @@ def build_pipeline(raw: str, env: str, db) -> dict:
         prefix_field = src_validator.TOPIC_PREFIX_FIELD or "topic.prefix"
         # Debezium requires a prefix. When it is unset or a plugin placeholder
         # ("", "*******"), deploy with connector_name as the prefix.
-        if is_placeholder(src_config.get(prefix_field)):
+        if _is_placeholder(src_config.get(prefix_field)):
             src_config[prefix_field] = src_name
             checked = f'connector_name "{src_name}" (used as {prefix_field})'
         else:

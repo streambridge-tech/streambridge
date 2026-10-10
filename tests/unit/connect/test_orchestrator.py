@@ -2,7 +2,6 @@
 import unittest
 from unittest.mock import patch
 
-from app.connectors.schemas import SECRET_MASK
 from app.models.connector_config import ConnectorConfig
 from app.models.pipeline import Pipeline
 from app.services.connect import orchestrator
@@ -146,8 +145,12 @@ class DeployPipelineTests(unittest.TestCase):
         self.assertEqual(src_deployed.get("database.server.name"), "ecommerce")
 
 
-class PlaceholderCredentialTests(unittest.TestCase):
-    """Seeded plugins carry "" / "*******" placeholders where the connection supplies the value."""
+class ConnectionLayeringTests(unittest.TestCase):
+    """Deployed config layers plugin base < connection < YAML config.
+
+    The plugins mirror the seeds: "" / "*******" placeholders and real defaults
+    such as database.port that a connection must be able to override.
+    """
 
     def _connections(self, **configs):
         configs = {"kafka_connect_dev": {"url": "http://kc.local:8083"}, **configs}
@@ -192,8 +195,8 @@ class PlaceholderCredentialTests(unittest.TestCase):
         snk = deployed["pg-to-s3-sink"]
         self.assertEqual(snk["s3.region"], "eu-west-1")
         self.assertEqual(snk["s3.bucket.name"], "lake")
-        # real plugin values still win over the connection
-        self.assertEqual(snk["flush.size"], "50000")
+        # connection values also beat real plugin defaults
+        self.assertEqual(snk["flush.size"], "10")
 
     def test_connection_values_replace_masked_plugin_placeholders(self):
         deployed = self._deploy(
@@ -214,10 +217,29 @@ class PlaceholderCredentialTests(unittest.TestCase):
         self.assertEqual(src["database.user"], "debezium")
         self.assertEqual(src["database.password"], "dbz")
 
-    def test_secret_mask_placeholder_does_not_override_the_connection(self):
-        raw = postgres_source_yaml(VALID_PG_CONFIG + f"\n    database.password: {SECRET_MASK}")
-        deployed = self._deploy(raw, self._connections(postgres_dev={"database.password": "secret"}))
-        self.assertEqual(deployed["pg-to-s3-source"]["database.password"], "secret")
+    def test_connection_port_beats_the_plugin_default_port(self):
+        raw = mysql_source_yaml(
+            "    database.server.name: ecommerce\n"
+            "    table.include.list: ecommerce.orders"
+        )
+        deployed = self._deploy(raw, self._connections(mysql_dev={"database.port": "3307"}))
+        self.assertEqual(deployed["mysql-to-s3-source"]["database.port"], "3307")
+
+    def test_plugin_default_is_kept_when_the_connection_lacks_the_key(self):
+        deployed = self._deploy(postgres_source_yaml(VALID_PG_CONFIG), self._connections())
+        self.assertEqual(deployed["pg-to-s3-source"]["database.port"], "5432")
+
+    def test_yaml_port_beats_the_connection_port(self):
+        raw = postgres_source_yaml(VALID_PG_CONFIG + "\n    database.port: \"6543\"")
+        deployed = self._deploy(raw, self._connections(postgres_dev={"database.port": "5433"}))
+        self.assertEqual(deployed["pg-to-s3-source"]["database.port"], "6543")
+
+    def test_connector_name_is_never_overridden_by_a_connection(self):
+        deployed = self._deploy(
+            postgres_source_yaml(VALID_PG_CONFIG), self._connections(postgres_dev={"name": "other"}),
+        )
+        self.assertIn("pg-to-s3-source", deployed)
+        self.assertEqual(deployed["pg-to-s3-source"]["name"], "pg-to-s3-source")
 
     def test_yaml_values_still_win_over_the_connection(self):
         raw = postgres_source_yaml(VALID_PG_CONFIG + "\n    database.dbname: from_yaml")
