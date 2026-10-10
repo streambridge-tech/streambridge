@@ -14,3 +14,4 @@ sandbox/**/debezium_plugins/
 *.jar
 .venv
 .vscode
+*.egg-info
