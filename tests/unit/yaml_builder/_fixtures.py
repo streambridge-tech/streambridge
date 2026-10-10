@@ -100,6 +100,37 @@ DEFAULT_PLUGINS = [
                {"connector.class": "io.confluent.connect.s3.S3SinkConnector", "tasks.max": "1"}),
 ]
 
+# Like the seeded plugins (seeds/plugins/): credential keys hold "" or "*******"
+# placeholders that the connection is expected to fill at deploy time.
+PLACEHOLDER_PLUGINS = [
+    FakePlugin("postgres-json", "source", "JSON", {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "tasks.max": "1",
+        "database.hostname": "",
+        "database.port": "5432",
+        "database.user": "",
+        "database.password": "",
+        "database.dbname": "",
+        "topic.prefix": "",
+    }),
+    FakePlugin("mysql-json", "source", "JSON", {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "*******",
+        "database.port": "3306",
+        "database.user": "*******",
+        "database.password": "*******",
+        "topic.prefix": "*******",
+    }),
+    FakePlugin("s3-json", "sink", "JSON", {
+        "connector.class": "io.confluent.connect.s3.S3SinkConnector",
+        "tasks.max": "1",
+        "s3.region": "",
+        "s3.bucket.name": "",
+        "flush.size": "50000",
+    }),
+]
+
 DEFAULT_CONNECTIONS = [
     FakeConnection("postgres_dev"),
     FakeConnection("mysql_dev"),

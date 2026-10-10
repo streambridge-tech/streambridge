@@ -15,7 +15,7 @@ from app.models.connector_config import ConnectorConfig
 from app.models.pipeline import Pipeline
 from app.services.connect.factory import deployment_of, get_backend
 from app.services.connect.rest_backend import ConfigValidationError
-from app.utils.yaml_builder import _extract_env_block, _extract_top_block, resolve_yaml
+from app.utils.yaml_builder import _extract_env_block, _extract_top_block, is_placeholder, resolve_yaml
 
 
 POLL_INTERVAL_SEC = 2
@@ -51,8 +51,10 @@ def _fetch_connection(db, name: str) -> Connection | None:
 def _inject_creds(config: dict, connection: Connection | None) -> dict:
     if not connection or not connection.config:
         return config
-    # existing config values (from plugin base + YAML) win over connection values
-    return {**connection.config, **config}
+    # Real config values (plugin base + YAML) win over connection values; plugin
+    # placeholders ("", "*******", the secret mask) do not.
+    real = {k: v for k, v in config.items() if not is_placeholder(v)}
+    return {**config, **connection.config, **real}
 
 
 def poll_until_running(

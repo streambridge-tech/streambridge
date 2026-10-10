@@ -66,11 +66,21 @@ import re
 import json
 import os
 
+from app.connectors.schemas import SECRET_MASK
+
 _VAR_RE  = re.compile(r"\{\{\s*var\s*\(\s*['\"](\w[\w-]*)['\"]\s*\)\s*\}\}")
 _CONN_RE = re.compile(r"\{\{\s*conn\s*\(\s*['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
 _ANY_RE  = re.compile(r"\{\{[^}]+\}\}")
 _CONN_MARKER_RE    = re.compile(r"\[connection:([^\]]+)\]")
 _ENV_VAR_MARKER_RE = re.compile(r'\$([A-Z_][A-Z0-9_]*)')
+
+# Values the seeded plugin configs use for "fill this in" (see seeds/plugins/).
+_PLACEHOLDERS = (None, "", "*******", SECRET_MASK)
+
+
+def is_placeholder(value) -> bool:
+    """True when a config value is an unset/masked placeholder rather than a real value."""
+    return value in _PLACEHOLDERS
 
 
 def _extract_env_block(raw: str, env: str) -> str:
@@ -385,9 +395,13 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     src_validator = get_connector("source", src_type)
     if src_validator:
         prefix_field = src_validator.TOPIC_PREFIX_FIELD or "topic.prefix"
-        prefix = src_config.get(prefix_field) or src_name
-        if not re.match(r'^[a-zA-Z0-9._-]+$', prefix or ""):
-            log("warn", f'connector_name "{src_name}" contains characters invalid for a Kafka topic prefix')
+        # A plugin placeholder ("", "*******") means unset: fall back to connector_name.
+        if is_placeholder(src_config.get(prefix_field)):
+            src_config.pop(prefix_field, None)
+        prefix = src_config.get(prefix_field)
+        checked = f'{prefix_field} "{prefix}"' if prefix else f'connector_name "{src_name}"'
+        if not re.match(r'^[a-zA-Z0-9._-]+$', prefix or src_name):
+            log("warn", f'{checked} contains characters invalid for a Kafka topic prefix')
             log("warn", f'Fix: set  {prefix_field}: <valid-prefix>  explicitly under source.config:')
         else:
             derived_topics = src_validator.derive_topics(src_config)

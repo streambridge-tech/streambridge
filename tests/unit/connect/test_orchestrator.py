@@ -1,12 +1,14 @@
 """Unit tests for orchestrator.deploy_pipeline with a fake backend + fake DB."""
 import unittest
+from unittest.mock import patch
 
+from app.connectors.schemas import SECRET_MASK
 from app.models.connector_config import ConnectorConfig
 from app.models.pipeline import Pipeline
 from app.services.connect import orchestrator
 from tests.unit.yaml_builder._fixtures import (
-    DEFAULT_CONNECTIONS, DEFAULT_PLUGINS, FakeConnection, FakeDB,
-    build, postgres_source_yaml,
+    DEFAULT_CONNECTIONS, DEFAULT_PLUGINS, PLACEHOLDER_PLUGINS, FakeConnection, FakeDB,
+    build, mysql_source_yaml, postgres_source_yaml,
 )
 
 
@@ -142,6 +144,85 @@ class DeployPipelineTests(unittest.TestCase):
         self.assertEqual(src_deployed.get("database.port"), "5432")
         # YAML-provided value must win over connection value
         self.assertEqual(src_deployed.get("database.server.name"), "ecommerce")
+
+
+class PlaceholderCredentialTests(unittest.TestCase):
+    """Seeded plugins carry "" / "*******" placeholders where the connection supplies the value."""
+
+    def _connections(self, **configs):
+        configs = {"kafka_connect_dev": {"url": "http://kc.local:8083"}, **configs}
+        connections = []
+        for c in DEFAULT_CONNECTIONS:
+            conn = FakeConnection(c.name)
+            conn.config = configs.get(c.name, {})
+            connections.append(conn)
+        return connections
+
+    def _deploy(self, raw, connections):
+        db = FakeDB(list(PLACEHOLDER_PLUGINS), connections)
+        build_result = build(raw, db=db)
+        self.assertTrue(build_result["ok"], msg=build_result.get("logs"))
+        backend = FakeBackend()
+        with patch.object(orchestrator, "get_backend", _patch_backend(backend)):
+            result = orchestrator.deploy_pipeline(
+                raw, "dev", build_result, db,
+                poll_timeout=0, poll_interval=0, sleep=lambda _s: None,
+            )
+        self.assertTrue(result["ok"], msg=result["logs"])
+        return dict(backend.deploys)
+
+    def test_connection_values_replace_empty_plugin_placeholders(self):
+        deployed = self._deploy(
+            postgres_source_yaml(VALID_PG_CONFIG),
+            self._connections(
+                postgres_dev={
+                    "database.hostname": "pg.local",
+                    "database.user": "dbz",
+                    "database.password": "secret",
+                    "database.dbname": "ecommerce",
+                },
+                s3_dev={"s3.region": "eu-west-1", "s3.bucket.name": "lake", "flush.size": "10"},
+            ),
+        )
+        src = deployed["pg-to-s3-source"]
+        self.assertEqual(src["database.hostname"], "pg.local")
+        self.assertEqual(src["database.user"], "dbz")
+        self.assertEqual(src["database.password"], "secret")
+        self.assertEqual(src["database.dbname"], "ecommerce")
+        snk = deployed["pg-to-s3-sink"]
+        self.assertEqual(snk["s3.region"], "eu-west-1")
+        self.assertEqual(snk["s3.bucket.name"], "lake")
+        # real plugin values still win over the connection
+        self.assertEqual(snk["flush.size"], "50000")
+
+    def test_connection_values_replace_masked_plugin_placeholders(self):
+        deployed = self._deploy(
+            mysql_source_yaml(
+                "    database.server.name: ecommerce\n"
+                "    table.include.list: ecommerce.orders"
+            ),
+            self._connections(
+                mysql_dev={
+                    "database.hostname": "mysql.local",
+                    "database.user": "debezium",
+                    "database.password": "dbz",
+                },
+            ),
+        )
+        src = deployed["mysql-to-s3-source"]
+        self.assertEqual(src["database.hostname"], "mysql.local")
+        self.assertEqual(src["database.user"], "debezium")
+        self.assertEqual(src["database.password"], "dbz")
+
+    def test_secret_mask_placeholder_does_not_override_the_connection(self):
+        raw = postgres_source_yaml(VALID_PG_CONFIG + f"\n    database.password: {SECRET_MASK}")
+        deployed = self._deploy(raw, self._connections(postgres_dev={"database.password": "secret"}))
+        self.assertEqual(deployed["pg-to-s3-source"]["database.password"], "secret")
+
+    def test_yaml_values_still_win_over_the_connection(self):
+        raw = postgres_source_yaml(VALID_PG_CONFIG + "\n    database.dbname: from_yaml")
+        deployed = self._deploy(raw, self._connections(postgres_dev={"database.dbname": "from_connection"}))
+        self.assertEqual(deployed["pg-to-s3-source"]["database.dbname"], "from_yaml")
 
 
 if __name__ == "__main__":
