@@ -217,6 +217,8 @@ uv run python build.py
 
 Raise `version` in `pyproject.toml` above the latest `v*` tag. CI rejects the pull request when the version is missing or not newer. After the pull request merges and CI passes, GitHub creates the tag `v<version>` and a GitHub Release. If that tag already exists, the release workflow fails.
 
+The **E2E** job starts Kafka, MySQL, Apicurio Registry, Confluent Schema Registry, and Kafka Connect, then deploys two MySQL connectors through StreamBridge and checks that both registries received a schema. It runs after the **CI** job. Merge stays gated on **CI** until branch protection also requires **E2E**.
+
 Contributions are accepted under the Apache License 2.0.
 
 ## License

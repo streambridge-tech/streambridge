@@ -26,7 +26,7 @@ class NotebookDeployError(Exception):
 class NotebookDeployer:
     """Save → resolve secrets → Kafka Connect deploy, with persisted step logs."""
 
-    def __init__(self, db, get_backend_fn=get_backend, sleep=time.sleep, poll_timeout=20, poll_interval=1):
+    def __init__(self, db, get_backend_fn=get_backend, sleep=time.sleep, poll_timeout=60, poll_interval=1):
         self.db = db
         self._get_backend = get_backend_fn
         self._sleep = sleep

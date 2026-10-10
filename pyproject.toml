@@ -1,6 +1,6 @@
 [project]
 name = "streambridge"
-version = "0.1.0"
+version = "0.1.1"
 description = "StreamBridge is a pipeline platform built on Debezium that captures row-level changes from your databases and streams them through Apache Kafka to any sink."
 requires-python = ">=3.12"
 dependencies = [

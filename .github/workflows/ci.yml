@@ -47,3 +47,70 @@ jobs:
         run: |
           python build.py
           git diff --exit-code -- static/dist
+
+  e2e:
+    name: E2E
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Kafka
+        run: docker compose -f .github/e2e/docker-compose.yml up -d --wait kafka
+
+      - name: Registries and MySQL
+        run: docker compose -f .github/e2e/docker-compose.yml up -d --wait registry schema-registry mysql
+
+      - name: Confluent Avro converter
+        run: |
+          set -euo pipefail
+          dest=.github/e2e/plugins/avro-converter
+          rm -rf "$dest"
+          mkdir -p "$dest"
+          curl -fsSL -o /tmp/avro-converter.zip \
+            "https://hub-downloads.confluent.io/api/plugins/confluentinc/kafka-connect-avro-converter/versions/8.3.2/confluentinc-kafka-connect-avro-converter-8.3.2.zip"
+          unzip -q /tmp/avro-converter.zip -d /tmp/avro-converter
+          find /tmp/avro-converter -name '*.jar' -exec cp {} "$dest/" \;
+          test -n "$(find "$dest" -name 'kafka-connect-avro-converter-*.jar' -print -quit)"
+
+      - name: Kafka Connect
+        run: docker compose -f .github/e2e/docker-compose.yml up -d --wait connect
+
+      - name: Install
+        run: |
+          python -m pip install -U pip
+          pip install -e .
+
+      - name: Start StreamBridge
+        run: |
+          set -euo pipefail
+          FLASK_ENV=production python main.py > /tmp/streambridge.log 2>&1 &
+          echo $! > /tmp/streambridge.pid
+          for _ in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:5000/api/auth/status >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "StreamBridge did not start"
+          cat /tmp/streambridge.log
+          exit 1
+
+      - name: End to end
+        run: python scripts/e2e_pipeline.py
+
+      - name: Stop StreamBridge
+        if: always()
+        run: |
+          if [ -f /tmp/streambridge.pid ]; then
+            kill "$(cat /tmp/streambridge.pid)" || true
+          fi
+
+      - name: Service logs
+        if: failure()
+        run: docker compose -f .github/e2e/docker-compose.yml logs --no-color

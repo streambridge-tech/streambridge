@@ -11,6 +11,7 @@ uv.lock
 
 # Downloaded Kafka Connect plugin binaries — fetch via the sandbox E2E README
 sandbox/**/debezium_plugins/
+.github/e2e/plugins/
 *.jar
 .venv
 .vscode
