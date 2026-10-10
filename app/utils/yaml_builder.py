@@ -205,8 +205,6 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     snk_name  = (re.search(r'^\s+connector_name:\s*(\S+)', snk_block, re.MULTILINE) or [None,None])[1]
     src_plugin_name = (re.search(r'^\s+plugin:\s*(\S+)', src_block, re.MULTILINE) or [None,None])[1]
     snk_plugin_name = (re.search(r'^\s+plugin:\s*(\S+)', snk_block, re.MULTILINE) or [None,None])[1]
-    plugin_m  = re.search(r'plugin\.name\s*:\s*(\S+)', raw)
-    slot_m    = re.search(r'slot\.name\s*:\s*(\S+)', raw)
     schema_m  = re.search(r'schema\.registry\.url\s*:\s*(\S+)', raw)
     env_block = _extract_env_block(raw, env)
     kc_env_m  = re.search(r'^[ \t]{6}kafka[_.]connect\.connection\s*:\s*(\S+)', env_block, re.MULTILINE)
