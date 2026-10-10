@@ -1,7 +1,8 @@
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import requests
 from flask import Flask
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -188,12 +189,24 @@ class SavedNotificationTestTests(_ConnectionsApiCase):
         self.assertTrue(r.get_json()["success"])
         self.assertEqual(post.call_args.args[0], "https://hooks.slack.com/services/T0/B0/real")
 
-    def test_stored_secret_is_never_sent_to_a_different_host(self, post):
+    def test_changed_host_with_the_stored_secret_asks_for_the_secret(self, post):
         row = self._slack()
-        self.client.post("/api/connections/test", json={
+        r = self.client.post("/api/connections/test", json={
             "id": row.id, "type": "notification", "subtype": "notification-slack",
             "host": "https://attacker.example", "password": self.MASK,
         })
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(r.get_json()["success"])
+        self.assertIn("re-enter", r.get_json()["message"].lower())
+        post.assert_not_called()
+
+    def test_unchanged_host_with_a_trailing_slash_uses_the_stored_secret(self, post):
+        row = self._slack()
+        r = self.client.post("/api/connections/test", json={
+            "id": row.id, "type": "notification", "subtype": "notification-slack",
+            "host": "https://hooks.slack.com/", "password": self.MASK,
+        })
+        self.assertEqual(r.status_code, 200, r.get_json())
         self.assertEqual(post.call_args.args[0], "https://hooks.slack.com/services/T0/B0/real")
 
     def test_typed_secret_is_used_as_entered(self, post):
@@ -231,3 +244,230 @@ class SavedNotificationTestTests(_ConnectionsApiCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.get_json()["message"], "no_service")
         self.assertEqual(r.get_json()["httpStatus"], 404)
+
+
+class NotificationErrorScrubTests(_ConnectionsApiCase):
+    """A failed delivery's message never carries the webhook secret or URL path."""
+
+    MASK = "\u2022" * 8
+    REFUSED = (
+        "HTTPConnectionPool(host='127.0.0.1', port=9): Max retries exceeded with url: {path} "
+        "(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1>: "
+        "Failed to establish a new connection: [Errno 61] Connection refused'))"
+    )
+
+    def _test(self, body, error):
+        with patch("app.services.alerting.channels.slack.requests.post",
+                   side_effect=requests.ConnectionError(error)):
+            r = self.client.post("/api/connections/test", json={
+                "type": "notification", "subtype": "notification-slack", **body})
+        self.assertFalse(r.get_json()["success"])
+        return r.get_json()["message"]
+
+    def test_stored_secret_is_masked_in_a_transport_error(self):
+        row = self._saved(name="alerts", type="notification", subtype="notification-slack",
+                          config={"host": "http://127.0.0.1:9", "password": "/services/T0/B0/SECRET"})
+        message = self._test({"id": row.id, "host": "http://127.0.0.1:9", "password": self.MASK},
+                             self.REFUSED.format(path="/services/T0/B0/SECRET"))
+        self.assertNotIn("SECRET", message)
+        self.assertNotIn("/services", message)
+        self.assertIn("Connection refused", message)
+
+    def test_typed_secret_is_masked_in_a_transport_error(self):
+        message = self._test({"host": "http://127.0.0.1:9", "password": "T0/B0/TYPED"},
+                             self.REFUSED.format(path="/T0/B0/TYPED"))
+        self.assertNotIn("TYPED", message)
+
+    def test_url_paths_and_queries_are_stripped(self):
+        message = self._test(
+            {"host": "https://hooks.slack.com", "password": "/services/a b"},
+            "SSLError for https://hooks.slack.com/services/a%20b?token=abc and url: /services/a%20b",
+        )
+        self.assertNotIn("a%20b", message)
+        self.assertNotIn("token=abc", message)
+        self.assertIn("https://hooks.slack.com", message)
+
+
+@patch("app.services.alerting.channels.slack.requests.post")
+class NotificationRetargetOnSaveTests(_ConnectionsApiCase):
+    MASK = "\u2022" * 8
+
+    def _slack(self):
+        return self._saved(name="alerts", type="notification", subtype="notification-slack",
+                           config={"host": "https://hooks.slack.com", "password": "/services/T0/B0/real"})
+
+    def test_new_host_with_the_masked_secret_is_rejected(self, _post):
+        row = self._slack()
+        r = self.client.put(f"/api/connections/{row.id}", json={
+            "host": "https://attacker.example", "password": self.MASK})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("re-enter", r.get_json()["error"].lower())
+        self.db.refresh(row)
+        self.assertEqual(row.config["host"], "https://hooks.slack.com")
+
+    def test_new_host_without_a_secret_is_rejected(self, _post):
+        row = self._slack()
+        r = self.client.put(f"/api/connections/{row.id}", json={"config": {"host": "https://attacker.example"}})
+        self.assertEqual(r.status_code, 400)
+
+    def test_new_host_with_a_new_secret_is_saved(self, _post):
+        row = self._slack()
+        r = self.client.put(f"/api/connections/{row.id}", json={
+            "host": "https://hooks.example", "password": "/services/T1/B1/new"})
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.db.refresh(row)
+        self.assertEqual(row.config, {"host": "https://hooks.example", "password": "/services/T1/B1/new"})
+
+    def test_unchanged_host_keeps_the_stored_secret(self, _post):
+        row = self._slack()
+        r = self.client.put(f"/api/connections/{row.id}", json={
+            "name": "alerts-2", "host": "https://hooks.slack.com", "password": self.MASK})
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.db.refresh(row)
+        self.assertEqual(row.config["password"], "/services/T0/B0/real")
+
+
+def _ok():
+    resp = MagicMock()
+    resp.status_code = 200
+    return resp
+
+
+@patch("app.connectors.infra.kafka_connect.requests.get", return_value=_ok())
+class ConnectRetargetTests(_ConnectionsApiCase):
+    """A stored Connect password only goes to the URL it was saved with."""
+
+    MASK = "\u2022" * 8
+
+    def _kc(self, **config):
+        return self._saved(name="kc", type="connect", subtype="kafka-connect", config={
+            "deployment": "connect", "auth_type": "basic", "url": "http://kc:8083",
+            "username": "admin", "password": "kc-secret", **config})
+
+    def _form(self, **fields):
+        return {"type": "connect", "subtype": "kafka-connect", "deployment": "connect",
+                "auth_type": "basic", "username": "admin", **fields}
+
+    def test_save_with_a_new_url_and_masked_password_is_rejected(self, _get):
+        row = self._kc()
+        r = self.client.put(f"/api/connections/{row.id}", json=self._form(url="http://evil:8083", password=self.MASK))
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("re-enter", r.get_json()["error"].lower())
+        self.db.refresh(row)
+        self.assertEqual(row.config["url"], "http://kc:8083")
+
+    def test_save_with_the_same_url_keeps_the_password(self, _get):
+        row = self._kc()
+        r = self.client.put(f"/api/connections/{row.id}", json=self._form(url="http://kc:8083"))
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.db.refresh(row)
+        self.assertEqual(row.config["password"], "kc-secret")
+
+    def test_save_with_a_new_url_and_no_stored_secret_is_allowed(self, _get):
+        row = self._saved(name="kc", type="connect", subtype="kafka-connect",
+                          config={"deployment": "connect", "auth_type": "none", "url": "http://kc:8083"})
+        r = self.client.put(f"/api/connections/{row.id}", json={
+            "type": "connect", "subtype": "kafka-connect", "auth_type": "none", "url": "http://kc2:8083"})
+        self.assertEqual(r.status_code, 200, r.get_json())
+
+    def test_test_with_a_new_url_and_masked_password_is_rejected(self, get):
+        row = self._kc()
+        r = self.client.post("/api/connections/test", json=self._form(id=row.id, url="http://evil:8083",
+                                                                      password=self.MASK))
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(r.get_json()["success"])
+        get.assert_not_called()
+
+    def test_test_with_a_new_url_and_typed_password_tests_what_was_typed(self, get):
+        row = self._kc()
+        r = self.client.post("/api/connections/test", json=self._form(id=row.id, url="http://kc2:8083",
+                                                                      password="typed"))
+        self.assertTrue(r.get_json()["success"], r.get_json())
+        self.assertEqual(get.call_args.args[0], "http://kc2:8083/connectors")
+        self.assertEqual(get.call_args.kwargs["auth"], ("admin", "typed"))
+
+    def test_test_with_the_same_url_uses_the_saved_password(self, get):
+        row = self._kc()
+        body = {"id": row.id, "type": "connect", "subtype": "kafka-connect", **row.to_dict()["config"]}
+        r = self.client.post("/api/connections/test", json=body)
+        self.assertTrue(r.get_json()["success"], r.get_json())
+        self.assertEqual(get.call_args.args[0], "http://kc:8083/connectors")
+        self.assertEqual(get.call_args.kwargs["auth"], ("admin", "kc-secret"))
+
+
+class StoredSecretDestinationTests(_ConnectionsApiCase):
+    """Kafka and Schema Registry: a new destination with a masked secret needs the secret again."""
+
+    MASK = "•" * 8
+    KAFKA = {"bootstrap.servers": "kafka:9092", "security.protocol": "SASL_SSL", "sasl.mechanism": "PLAIN",
+             "sasl.username": "app", "sasl.password": "kafka-secret"}
+    REGISTRY = {"provider": "confluent", "url": "http://sr:8081", "auth_type": "basic",
+                "username": "app", "password": "sr-secret"}
+
+    def setUp(self):
+        super().setUp()
+        tests = [patch(f"app.connectors.infra.{module}.{cls}.test_connection",
+                       return_value={"success": True, "message": "ok"})
+                 for module, cls in (("kafka_broker", "KafkaBrokerConnector"),
+                                     ("schema_registry", "SchemaRegistryConnector"))]
+        self.kafka_test, self.registry_test = (t.start() for t in tests)
+        for t in tests:
+            self.addCleanup(t.stop)
+
+    def _kafka(self):
+        return self._saved(name="kafka", type="transport", subtype="kafka", config=dict(self.KAFKA))
+
+    def _registry(self):
+        return self._saved(name="sr", type="transport", subtype="schema-registry", config=dict(self.REGISTRY))
+
+    def _kafka_form(self, row, servers, **extra):
+        return {"id": row.id, "type": "transport", "subtype": "kafka", "bootstrap_servers": servers,
+                "security_protocol": "SASL_SSL", "sasl_mechanism": "PLAIN", "username": "app",
+                "password": self.MASK, **extra}
+
+    def _registry_form(self, row, url, **extra):
+        return {"id": row.id, "type": "transport", "subtype": "schema-registry", "provider": "confluent",
+                "url": url, "auth_type": "basic", "username": "app", "password": self.MASK, **extra}
+
+    def test_kafka_save_to_new_brokers_with_masked_password_is_rejected(self):
+        row = self._kafka()
+        r = self.client.put(f"/api/connections/{row.id}", json=self._kafka_form(row, "evil:9092"))
+        self.assertEqual(r.status_code, 400)
+        self.db.refresh(row)
+        self.assertEqual(row.config["bootstrap.servers"], "kafka:9092")
+
+    def test_kafka_save_to_the_same_brokers_keeps_the_password(self):
+        row = self._kafka()
+        r = self.client.put(f"/api/connections/{row.id}", json=self._kafka_form(row, "kafka:9092"))
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.db.refresh(row)
+        self.assertEqual(row.config["sasl.password"], "kafka-secret")
+
+    def test_kafka_save_to_new_brokers_with_a_new_password_is_saved(self):
+        row = self._kafka()
+        r = self.client.put(f"/api/connections/{row.id}",
+                            json=self._kafka_form(row, "kafka2:9092", password="new-secret"))
+        self.assertEqual(r.status_code, 200, r.get_json())
+
+    def test_kafka_test_against_new_brokers_with_masked_password_is_rejected(self):
+        row = self._kafka()
+        r = self.client.post("/api/connections/test", json=self._kafka_form(row, "evil:9092"))
+        self.assertEqual(r.status_code, 400)
+        self.kafka_test.assert_not_called()
+
+    def test_kafka_test_against_the_same_brokers_uses_the_saved_config(self):
+        row = self._kafka()
+        r = self.client.post("/api/connections/test", json=self._kafka_form(row, "kafka:9092"))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.kafka_test.call_args.args[0]["sasl.password"], "kafka-secret")
+
+    def test_registry_save_to_new_url_with_masked_password_is_rejected(self):
+        row = self._registry()
+        r = self.client.put(f"/api/connections/{row.id}", json=self._registry_form(row, "http://evil:8081"))
+        self.assertEqual(r.status_code, 400)
+
+    def test_registry_test_against_new_url_with_masked_password_is_rejected(self):
+        row = self._registry()
+        r = self.client.post("/api/connections/test", json=self._registry_form(row, "http://evil:8081"))
+        self.assertEqual(r.status_code, 400)
+        self.registry_test.assert_not_called()
