@@ -76,3 +76,30 @@ class PluginApiTests(unittest.TestCase):
         self.assertEqual(r.get_json()["description"], "ok")
         r = self.client.delete("/api/plugins/my-source")
         self.assertEqual(r.status_code, 200)
+
+    def _create(self, config):
+        return self.client.post("/api/plugins", json={
+            "name": "my-source", "type": "source", "format": "JSON", "config": config,
+        })
+
+    def test_create_rejects_config_that_is_not_an_object(self):
+        for config in ([1], 5, "[1]", "5", "null", '"text"'):
+            with self.subTest(config=config):
+                r = self._create(config)
+                self.assertEqual(r.status_code, 400)
+                self.assertIn("'config' must be a JSON object", r.get_json()["error"])
+        self.assertIsNone(self.db.get(Plugin, "my-source"))
+
+    def test_create_accepts_object_config_as_json_text(self):
+        r = self._create('{"connector.class": "demo"}')
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.get_json()["config"], {"connector.class": "demo"})
+
+    def test_update_rejects_config_that_is_not_an_object(self):
+        self.assertEqual(self._create({"connector.class": "demo"}).status_code, 201)
+        for config in (None, [1], 5, "[1]", "null"):
+            with self.subTest(config=config):
+                r = self.client.put("/api/plugins/my-source", json={"config": config})
+                self.assertEqual(r.status_code, 400)
+                self.assertIn("'config' must be a JSON object", r.get_json()["error"])
+        self.assertEqual(json.loads(self.db.get(Plugin, "my-source").config), {"connector.class": "demo"})

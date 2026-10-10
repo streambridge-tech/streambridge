@@ -164,6 +164,15 @@ def _parse_env_var_refs(resolved: str) -> list[str]:
     return list(dict.fromkeys(_ENV_VAR_MARKER_RE.findall(resolved)))
 
 
+def _plugin_config(plugin) -> dict | None:
+    """Return a plugin's stored config, or None when it is not a JSON object."""
+    try:
+        config = json.loads(plugin.config)
+    except (TypeError, ValueError):
+        return None
+    return config if isinstance(config, dict) else None
+
+
 def _fail(logs: list, errors: list) -> dict:
     for e in errors:
         logs.append({"level": "error", "text": e})
@@ -366,8 +375,15 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     log("success", f'plugin (sink):   "{snk_plugin.name}" ({"explicit" if snk_plugin_name else "default"}, format={snk_plugin.format})  ✓')
 
     # ── Merge: plugin base ← YAML config: block ──────────────────────────────
-    src_base   = json.loads(src_plugin.config)
-    snk_base   = json.loads(snk_plugin.config)
+    src_base   = _plugin_config(src_plugin)
+    snk_base   = _plugin_config(snk_plugin)
+    plugin_errors = [
+        f"plugin '{plugin.name}' config is not a JSON object — fix it in the Plugins view"
+        for plugin, base in ((src_plugin, src_base), (snk_plugin, snk_base))
+        if base is None
+    ]
+    if plugin_errors:
+        return _fail(logs, plugin_errors)
     src_yaml   = _section_config(resolved, "source")
     snk_yaml   = _section_config(resolved, "sink")
     src_config = {**src_base, **src_yaml, "name": src_name}
