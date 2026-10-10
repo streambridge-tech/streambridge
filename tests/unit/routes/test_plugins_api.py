@@ -103,3 +103,14 @@ class PluginApiTests(unittest.TestCase):
                 self.assertEqual(r.status_code, 400)
                 self.assertIn("'config' must be a JSON object", r.get_json()["error"])
         self.assertEqual(json.loads(self.db.get(Plugin, "my-source").config), {"connector.class": "demo"})
+
+    def test_create_and_update_reject_a_body_that_is_not_an_object(self):
+        self.assertEqual(self._create({"connector.class": "demo"}).status_code, 201)
+        for body in ([1], ["my-source"], "text", 5):
+            with self.subTest(body=body):
+                r = self.client.post("/api/plugins", json=body)
+                self.assertEqual(r.status_code, 400)
+                self.assertIn("JSON object", r.get_json()["error"])
+                r = self.client.put("/api/plugins/my-source", json=body)
+                self.assertEqual(r.status_code, 400)
+                self.assertIn("JSON object", r.get_json()["error"])

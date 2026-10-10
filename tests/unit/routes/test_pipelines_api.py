@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from app.models.alert import Alert
 from app.models.connector_config import ConnectorConfig
 from app.models.pipeline import Pipeline
-from app.routes.pipelines_api import _extract_alerts_from_yaml, pipelines_api
+from app.routes.pipelines_api import _alert_attempts_error, _extract_alerts_from_yaml, pipelines_api
 from app.utils.db import Base
 
 
@@ -86,6 +86,13 @@ class ExtractAlertsTests(unittest.TestCase):
         self.assertEqual(alerts["source"].channel_type, "slack")
         self.assertEqual(alerts["source"].attempts, 5)
         self.assertEqual(alerts["sink"].channel_name, "data")
+
+    def test_quoted_attempts_are_accepted(self):
+        for quoted in ('"4"', "'4'"):
+            with self.subTest(attempts=quoted):
+                raw = ALERT_YAML.replace("attempts: 5", f"attempts: {quoted}")
+                self.assertIsNone(_alert_attempts_error(raw))
+                self.assertEqual(self._alerts(raw)["source"].attempts, 4)
 
     def test_section_without_alert_block_has_no_alert(self):
         raw = ALERT_YAML.replace("  alert:\n    type: gchat\n    channel_name: data\n", "")
@@ -190,6 +197,7 @@ class DeployRouteTests(unittest.TestCase):
         self.mock_build.return_value = {"ok": True, "logs": [], "meta": {"name": "pg-to-s3"}}
         resp = self._post({"yamlRaw": BAD_ATTEMPTS_YAML, "env": "dev"})
         self.assertEqual(resp.status_code, 400)
+        self.assertIs(resp.get_json()["ok"], False)
         error = resp.get_json()["error"]
         self.assertIn("source.alert.attempts", error)
         self.assertIn("three", error)
@@ -203,6 +211,25 @@ class DeployRouteTests(unittest.TestCase):
                 self.assertIn("error", resp.get_json())
         self.mock_build.assert_not_called()
         self.mock_deploy.assert_not_called()
+
+
+class BuildRouteTests(unittest.TestCase):
+
+    def setUp(self):
+        self.client = _make_client()
+        session_patch = patch("app.routes.pipelines_api.SessionLocal")
+        build_patch = patch("app.routes.pipelines_api.build_pipeline")
+        session_patch.start()
+        self.mock_build = build_patch.start()
+        self.addCleanup(session_patch.stop)
+        self.addCleanup(build_patch.stop)
+
+    def test_non_numeric_alert_attempts_fails_the_build(self):
+        resp = self.client.post("/api/pipelines/build", json={"yamlRaw": BAD_ATTEMPTS_YAML, "env": "dev"})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIs(resp.get_json()["ok"], False)
+        self.assertIn("source.alert.attempts", resp.get_json()["error"])
+        self.mock_build.assert_not_called()
 
 
 class CreatePipelineRouteTests(unittest.TestCase):
@@ -240,6 +267,7 @@ class CreatePipelineRouteTests(unittest.TestCase):
     def _assert_rejected(self, body, needle):
         resp = _post_json_text(self.client, "/api/pipelines", body)
         self.assertEqual(resp.status_code, 400, msg=resp.get_data(as_text=True))
+        self.assertIs(resp.get_json()["ok"], False)
         self.assertIn(needle, resp.get_json()["error"])
         self.assertEqual(self.db.query(Pipeline).count(), 0)
 
@@ -281,6 +309,15 @@ class CreatePipelineRouteTests(unittest.TestCase):
         resp = self.client.patch("/api/pipelines/pg-to-s3", data="null", content_type="application/json")
         self.assertEqual(resp.status_code, 400)
         self.assertIn("JSON object", resp.get_json()["error"])
+
+    def test_patch_with_non_string_status_is_rejected(self):
+        self.assertEqual(self._post(self._valid_body()).status_code, 201)
+        for status in (5, None, ["running"]):
+            with self.subTest(status=status):
+                resp = self.client.patch("/api/pipelines/pg-to-s3", json={"status": status})
+                self.assertEqual(resp.status_code, 400)
+                self.assertIn("status", resp.get_json()["error"])
+        self.assertEqual(self.db.query(Pipeline).one().status, "deploying")
 
 
 class PipelineByIdRouteTests(unittest.TestCase):

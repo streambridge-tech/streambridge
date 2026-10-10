@@ -28,7 +28,7 @@ def _alert_blocks(yaml_raw: str) -> dict[str, str]:
 
 def _alert_value(block: str, key: str, value_re: str = r'[^\s#]+') -> str | None:
     m = re.search(rf'^[ \t]*{key}[ \t]*:[ \t]*({value_re})', block, re.MULTILINE)
-    return m.group(1).strip() if m else None
+    return m.group(1).strip().strip('"').strip("'") if m else None
 
 
 def _alert_attempts_error(yaml_raw: str) -> str | None:
@@ -73,7 +73,7 @@ def _extract_alerts_from_yaml(yaml_raw: str, pipeline_id: str, pipeline_name: st
 
 
 def _bad_request(message: str):
-    return jsonify({"error": message}), 400
+    return jsonify({"ok": False, "error": message}), 400
 
 
 def _yaml_request() -> tuple[str, str, str | None]:
@@ -117,6 +117,7 @@ pipelines_api = Blueprint("pipelines_api", __name__, url_prefix="/api")
 @require("connector.validate")
 def build():
     raw, env, error = _yaml_request()
+    error = error or _alert_attempts_error(raw)
     if error:
         return _bad_request(error)
     with SessionLocal() as db:
@@ -289,6 +290,8 @@ def update_pipeline(name: str):
     data = request.get_json(force=True)
     if not isinstance(data, dict):
         return _bad_request("Request body must be a JSON object")
+    if "status" in data and not (isinstance(data["status"], str) and data["status"].strip()):
+        return _bad_request("status must be a non-empty string")
     with SessionLocal() as db:
         pipeline = db.query(Pipeline).filter(Pipeline.name == name).order_by(Pipeline.created_at.desc()).first()
         if not pipeline:

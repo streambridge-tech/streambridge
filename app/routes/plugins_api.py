@@ -53,6 +53,8 @@ def get_plugin(name: str):
 @require("plugin.create")
 def create_plugin():
     data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
 
     name = (data.get("name") or "").strip().lower()
     if not _valid_slug(name):
@@ -102,6 +104,8 @@ def update_plugin(name: str):
             return jsonify({"error": "Built-in plugins cannot be edited"}), 403
 
         data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return jsonify({"error": "Request body must be a JSON object"}), 400
 
         if "config" in data:
             config, error = _parse_config(data["config"])
