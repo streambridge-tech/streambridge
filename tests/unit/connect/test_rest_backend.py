@@ -3,6 +3,9 @@ import json
 import unittest
 from unittest.mock import patch
 
+import requests
+
+from app.connectors.infra import kafka_connect
 from app.services.connect.rest_backend import RestBackend, effective_connect_status
 
 
@@ -174,6 +177,81 @@ class RestBackendTests(unittest.TestCase):
         self.fake.queue("GET", f"{self.URL}/connectors/pg", FakeResponse(200, {"name": "pg"}))
         backend.exists("pg")
         self.assertEqual(self.fake.calls[-1][2]["auth"], ("u", "p"))
+
+
+class AnyResponseRequests(FakeRequests):
+    """Answers every call with 200 so a test can drive each backend method."""
+
+    def _dispatch(self, method: str, url: str, **kwargs):
+        self.calls.append((method.upper(), url, kwargs))
+        return FakeResponse(200, {})
+
+
+def _call_every_method(backend: RestBackend) -> None:
+    backend.exists("pg")
+    backend.deploy("pg", {"connector.class": "X"})
+    backend.poll_status("pg")
+    backend.delete("pg")
+    backend.get_status("pg")
+    backend.get_config("pg")
+    backend.get_offsets("pg")
+    backend.list_tasks("pg")
+    backend.get_topics("pg")
+    backend.get_plugin_config("X")
+    backend.pause("pg")
+    backend.resume("pg")
+    backend.restart("pg")
+    backend.restart_task("pg", 0)
+    backend.reset_offsets("pg")
+    backend.validate_config("X", {})
+
+
+class RestBackendTransportTests(unittest.TestCase):
+    """TLS verification and the timeout come from the saved connection, like the connection test."""
+
+    URL = "https://kc.local:8443"
+
+    def setUp(self):
+        self.fake = AnyResponseRequests()
+        patcher = patch("app.services.connect.rest_backend.requests", self.fake)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _transport(self):
+        return {(kwargs["verify"], kwargs["timeout"]) for _method, _url, kwargs in self.fake.calls}
+
+    def test_every_request_uses_the_saved_verify_and_timeout(self):
+        _call_every_method(RestBackend({"url": self.URL, "verify.ssl": "false", "timeout": "3"}))
+        self.assertGreaterEqual(len(self.fake.calls), 16)
+        self.assertEqual(self._transport(), {(False, 3)})
+
+    def test_defaults_verify_tls_with_a_ten_second_timeout(self):
+        _call_every_method(RestBackend({"url": "http://kc.local:8083"}))
+        self.assertEqual(self._transport(), {(True, 10)})
+
+    def test_settings_parse_like_the_connection_test(self):
+        for raw in ("true", "false", "TRUE", "0", "1", "no", "on", True, False, None, ""):
+            for timeout in ("5", 7, "", None, "abc", "2.5", 0):
+                config = {"url": self.URL, "verify.ssl": raw, "timeout": timeout}
+                self.fake.calls.clear()
+                RestBackend(config).exists("pg")
+                expected = (kafka_connect._verify(config), kafka_connect._timeout(config))
+                self.assertEqual(self._transport(), {expected}, config)
+
+    def test_zero_or_negative_timeout_becomes_one_second(self):
+        for timeout in ("0", "-5", -2):
+            self.fake.calls.clear()
+            RestBackend({"url": self.URL, "timeout": timeout}).exists("pg")
+            self.assertEqual(self._transport(), {(True, 1)}, timeout)
+
+    def test_validate_transport_failure_becomes_a_runtime_error(self):
+        backend = RestBackend({"url": self.URL})
+        with patch.object(backend, "validate_config",
+                          side_effect=requests.exceptions.SSLError("certificate verify failed")):
+            with self.assertRaises(RuntimeError) as ctx:
+                backend._validate_or_raise({"connector.class": "X"}, "pg")
+        self.assertIn("certificate verify failed", str(ctx.exception))
+        self.assertIsInstance(ctx.exception.__cause__, requests.exceptions.SSLError)
 
 
 class ExtractFieldErrorsTests(unittest.TestCase):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import requests
 
 from app.services.connect.backend import DeploymentBackend
-from app.services.connect.rest_backend import RestBackend
+from app.services.connect.rest_backend import RestBackend, request_timeout, verify_ssl
 
 
 _LIFTED = ("connector.class", "tasks.max", "name")
@@ -48,10 +48,8 @@ class KubernetesBackend(DeploymentBackend):
         self._namespace = str(self._config.get("namespace") or "").strip()
         self._cluster = str(self._config.get("cluster") or "").strip()
         self._token = str(self._config.get("api_token") or "")
-
-    def _verify(self) -> bool:
-        raw = str(self._config.get("verify.ssl", "true")).lower()
-        return raw in ("true", "1", "yes", "on")
+        self._verify = verify_ssl(self._config)
+        self._timeout = request_timeout(self._config)
 
     def _headers(self, content_type: str | None = None) -> dict:
         headers = {
@@ -100,8 +98,8 @@ class KubernetesBackend(DeploymentBackend):
         resp = requests.get(
             self._object(connector_name),
             headers=self._headers(),
-            timeout=RestBackend.HTTP_TIMEOUT,
-            verify=self._verify(),
+            timeout=self._timeout,
+            verify=self._verify,
         )
         if resp.status_code == 200:
             return True
@@ -119,8 +117,8 @@ class KubernetesBackend(DeploymentBackend):
                 self._object(connector_name),
                 json={"spec": manifest["spec"]},
                 headers=self._headers("application/merge-patch+json"),
-                timeout=RestBackend.HTTP_TIMEOUT,
-                verify=self._verify(),
+                timeout=self._timeout,
+                verify=self._verify,
             )
             self._fail(resp, "update")
             return
@@ -128,16 +126,16 @@ class KubernetesBackend(DeploymentBackend):
             self._collection(),
             json=manifest,
             headers=self._headers("application/json"),
-            timeout=RestBackend.HTTP_TIMEOUT,
-            verify=self._verify(),
+            timeout=self._timeout,
+            verify=self._verify,
         )
         if resp.status_code == 409:
             resp = requests.patch(
                 self._object(connector_name),
                 json={"spec": manifest["spec"]},
                 headers=self._headers("application/merge-patch+json"),
-                timeout=RestBackend.HTTP_TIMEOUT,
-                verify=self._verify(),
+                timeout=self._timeout,
+                verify=self._verify,
             )
             self._fail(resp, "update")
             return
@@ -151,8 +149,8 @@ class KubernetesBackend(DeploymentBackend):
         resp = requests.delete(
             self._object(connector_name),
             headers=self._headers(),
-            timeout=RestBackend.HTTP_TIMEOUT,
-            verify=self._verify(),
+            timeout=self._timeout,
+            verify=self._verify,
         )
         if resp.status_code in (200, 202, 204, 404):
             return
@@ -164,8 +162,8 @@ class KubernetesBackend(DeploymentBackend):
             self._object(name),
             json={"spec": {"state": state}},
             headers=self._headers("application/merge-patch+json"),
-            timeout=RestBackend.HTTP_TIMEOUT,
-            verify=self._verify(),
+            timeout=self._timeout,
+            verify=self._verify,
         )
         self._fail(resp, state)
 

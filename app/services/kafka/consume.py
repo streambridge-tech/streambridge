@@ -102,29 +102,31 @@ def consume_messages(
                 "partitions": [],
             }
 
-        tps = [TopicPartition(topic, part) for part in partitions]
         beginning = {}
-        end = {}
-        assigned = []
-        per_partition = max(1, limit // len(tps))
-        for tp in tps:
+        bound = {}  # exclusive upper offset for this page
+        for part in partitions:
+            tp = TopicPartition(topic, part)
             low, high = consumer.get_watermark_offsets(tp, timeout=STANDARD_TIMEOUT_SEC)
-            beginning[tp.partition] = int(low or 0)
-            end[tp.partition] = int(high or 0)
-            high_bound = end[tp.partition]
-            if before and str(tp.partition) in before:
+            beginning[part] = int(low or 0)
+            high_bound = int(high or 0)
+            if before and str(part) in before:
                 try:
-                    high_bound = min(high_bound, int(before[str(tp.partition)]))
+                    high_bound = min(high_bound, int(before[str(part)]))
                 except (TypeError, ValueError):
                     pass
-            start = max(beginning[tp.partition], high_bound - per_partition)
-            assigned.append(TopicPartition(topic, tp.partition, start))
-        consumer.assign(assigned)
+            bound[part] = high_bound
+
+        # A partition with nothing below its bound is exhausted: it is not fetched.
+        live = [part for part in partitions if bound[part] > beginning[part]]
+        per_partition = max(1, limit // len(live)) if live else 0
+        starts = {part: max(beginning[part], bound[part] - per_partition) for part in live}
+        consumer.assign([TopicPartition(topic, part, starts[part]) for part in live])
 
         records: list[Any] = []
+        complete: set[int] = set()  # partitions whose whole window has been read
         deadline = time.monotonic() + STANDARD_TIMEOUT_SEC
         idle = 0
-        while len(records) < limit and time.monotonic() < deadline:
+        while not complete.issuperset(live) and len(records) < limit and time.monotonic() < deadline:
             message = consumer.poll(0.5)
             if message is None:
                 idle += 1
@@ -133,19 +135,20 @@ def consume_messages(
                 continue
             idle = 0
             err = message.error()
+            part = message.partition()
             if err:
                 if err.code() == KafkaError._PARTITION_EOF:
+                    complete.add(part)
                     continue
                 raise KafkaBrowseError(err.str() or str(err))
-            high = end.get(message.partition(), 0)
-            if before and str(message.partition()) in before:
-                try:
-                    high = min(high, int(before[str(message.partition())]))
-                except (TypeError, ValueError):
-                    pass
-            if message.offset() >= high:
+            if message.offset() >= bound.get(part, 0):
+                complete.add(part)
                 continue
             records.append(message)
+            if message.offset() == bound[part] - 1:
+                complete.add(part)  # partitions arrive in offset order, so the window is all read
+        # A window cut off by the deadline or idle break is served whole on a later page.
+        records = [item for item in records if item.partition() in complete]
         records.sort(key=lambda item: (_message_ts(item) or 0, item.offset()), reverse=True)
         records = records[:limit]
         messages = [
@@ -155,11 +158,15 @@ def consume_messages(
         cursor = {}
         has_older = False
         for part in partitions:
-            low = beginning.get(part, 0)
             offsets = [item.offset() for item in records if item.partition() == part]
-            oldest = min(offsets) if offsets else end.get(part, 0)
+            if part not in complete:
+                oldest = bound[part]  # exhausted, or not fully read: keep the cursor
+            elif offsets:
+                oldest = min(offsets)
+            else:
+                oldest = starts[part]  # the window was empty (e.g. compacted); move past it
             cursor[str(part)] = oldest
-            if oldest > low:
+            if oldest > beginning[part]:
                 has_older = True
         return {
             "topic": topic,

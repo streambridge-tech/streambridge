@@ -53,6 +53,9 @@ def create_app():
     app.register_blueprint(notebooks_api)
     app.register_blueprint(folders_api)
 
+    from app.routes.errors import register_error_handlers
+    register_error_handlers(app)
+
     from app.utils.auth import install_auth
     install_auth(app)
 

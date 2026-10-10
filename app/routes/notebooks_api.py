@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify, request
-
+import math
 from datetime import datetime, timezone
+
+from flask import Blueprint, jsonify, request
 
 from app.models.connector_command_log import ConnectorCommandLog
 from app.models.connector_notebook import ConnectorNotebook
@@ -26,6 +27,21 @@ def _logs(db, notebook_id: str, limit: int = 100):
         .all()
     )
     return [row.to_dict() for row in rows]
+
+
+_INT_LIMIT = 2**31 - 1  # fits an Integer column on every supported database
+
+
+def _whole_number(value) -> int | None:
+    """None for a missing value; numbers and numeric strings become ints, anything else is a ValueError."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError(f"Not a number: {value!r}")
+    number = float(value)  # ValueError for a non-numeric string
+    if not math.isfinite(number) or abs(number) > _INT_LIMIT:
+        raise ValueError(f"Number out of range: {value!r}")
+    return int(number)
 
 
 def _payload(db, notebook: ConnectorNotebook, logs=False, limit=100) -> dict:
@@ -152,19 +168,24 @@ def list_logs(notebook_id: str):
 @require("connector.save")
 def append_log(notebook_id: str):
     data = request.get_json(force=True) or {}
+    try:
+        http_status = _whole_number(data.get("http"))
+        latency_ms = _whole_number(data.get("timeMs")) or 0
+    except ValueError:
+        return jsonify({"error": "'http' and 'timeMs' must be numbers"}), 400
     with SessionLocal() as db:
         notebook = db.get(ConnectorNotebook, notebook_id)
         if not notebook:
             return jsonify({"error": "Notebook not found"}), 404
         writer = CommandLogWriter(db, notebook_id)
-        status = "ok" if (data.get("http") or 0) < 400 else "error"
+        status = "ok" if (http_status or 0) < 400 else "error"
         row = writer.record(
             str(data.get("step") or data.get("key") or STEP_API),
             status,
             message=str(data.get("action") or data.get("message") or "API command")[:512],
             detail=str(data.get("bodyText") or data.get("detail") or "")[:8000] or None,
-            http_status=data.get("http"),
-            latency_ms=int(data.get("timeMs") or 0),
+            http_status=http_status,
+            latency_ms=latency_ms,
         )
         db.commit()
         db.refresh(row)

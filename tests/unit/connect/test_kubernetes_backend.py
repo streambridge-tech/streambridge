@@ -2,6 +2,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+import requests
+
 from app.connectors.infra.kafka_connect import KafkaConnectConnector
 from app.services.connect.factory import deployment_of, get_backend
 from app.services.connect.kubernetes_backend import KubernetesBackend, connector_manifest
@@ -81,6 +83,43 @@ class TestKubernetesDeploy(unittest.TestCase):
         self._backend().pause("license-file")
         self.assertEqual(patch_req.call_args.kwargs["json"], {"spec": {"state": "paused"}})
         self.assertEqual(patch_req.call_args.kwargs["headers"]["Content-Type"], "application/merge-patch+json")
+
+
+class TestKubernetesTransport(unittest.TestCase):
+    """The Connect URL reads and the Kubernetes calls use the saved TLS and timeout settings."""
+
+    def _backend(self, **extra):
+        return KubernetesBackend({
+            "url": "https://connect:8443",
+            "api_host": "https://kube.example.com",
+            "namespace": "kafka",
+            "cluster": "my-connect-cluster",
+            "api_token": "token-value",
+            **extra,
+        })
+
+    @patch("app.services.connect.rest_backend.requests.get")
+    def test_status_reads_use_saved_verify_and_timeout(self, get):
+        get.return_value = _response(404)
+        self.assertEqual(self._backend(**{"verify.ssl": "false", "timeout": "4"}).poll_status("pg"), "UNKNOWN")
+        self.assertEqual(get.call_args.kwargs["verify"], False)
+        self.assertEqual(get.call_args.kwargs["timeout"], 4)
+
+    @patch("app.services.connect.kubernetes_backend.requests.patch")
+    def test_kubernetes_calls_use_saved_verify_and_timeout(self, patch_req):
+        patch_req.return_value = _response(200)
+        self._backend(**{"verify.ssl": "false", "timeout": "4"}).pause("pg")
+        self.assertEqual(patch_req.call_args.kwargs["verify"], False)
+        self.assertEqual(patch_req.call_args.kwargs["timeout"], 4)
+
+    @patch("app.services.connect.kubernetes_backend.requests.post")
+    @patch("app.services.connect.rest_backend.requests.put")
+    def test_deploy_turns_a_connect_tls_failure_into_a_runtime_error(self, put, post):
+        put.side_effect = requests.exceptions.SSLError("certificate verify failed")
+        with self.assertRaises(RuntimeError) as ctx:
+            self._backend().deploy("pg", {"connector.class": "X"})
+        self.assertIn("certificate verify failed", str(ctx.exception))
+        post.assert_not_called()
 
 
 class TestConnectionChecks(unittest.TestCase):

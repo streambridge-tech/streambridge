@@ -1,6 +1,23 @@
 import requests
+from requests import RequestException  # bound at import so a stubbed `requests` keeps it
 
 from app.services.connect.backend import DeploymentBackend
+
+DEFAULT_TIMEOUT = 10  # seconds per request
+
+
+def verify_ssl(kc_config: dict) -> bool:
+    """`verify.ssl` from a Kafka Connect connection. TLS is verified unless it is switched off."""
+    raw = str(kc_config.get("verify.ssl", "true")).lower()
+    return raw in ("true", "1", "yes", "on")
+
+
+def request_timeout(kc_config: dict) -> int:
+    """`timeout` seconds from a Kafka Connect connection (at least 1), or the default."""
+    try:
+        return max(1, int(kc_config.get("timeout") or DEFAULT_TIMEOUT))
+    except (TypeError, ValueError):
+        return DEFAULT_TIMEOUT
 
 
 class ConfigValidationError(RuntimeError):
@@ -26,8 +43,6 @@ class RestBackend(DeploymentBackend):
     makes the overall state FAILED even if the connector itself is RUNNING.
     """
 
-    HTTP_TIMEOUT = 10  # seconds per request
-
     def __init__(self, kc_config: dict):
         self._url = (kc_config.get("url") or "").rstrip("/")
         self._auth: tuple[str, str] | None = None
@@ -35,15 +50,19 @@ class RestBackend(DeploymentBackend):
         password = kc_config.get("password")
         if username and password:
             self._auth = (username, password)
+        self._verify = verify_ssl(kc_config)
+        self._timeout = request_timeout(kc_config)
 
-    def _endpoint(self, path: str) -> str:
-        return f"{self._url}{path}"
+    def _request(self, method: str, path: str, **kwargs) -> requests.Response:
+        """Call Connect with the connection's auth, TLS verification and timeout."""
+        send = getattr(requests, method)
+        return send(
+            f"{self._url}{path}",
+            auth=self._auth, verify=self._verify, timeout=self._timeout, **kwargs,
+        )
 
     def exists(self, connector_name: str) -> bool:
-        resp = requests.get(
-            self._endpoint(f"/connectors/{connector_name}"),
-            auth=self._auth, timeout=self.HTTP_TIMEOUT,
-        )
+        resp = self._request("get", f"/connectors/{connector_name}")
         if resp.status_code == 200:
             return True
         if resp.status_code == 404:
@@ -58,16 +77,9 @@ class RestBackend(DeploymentBackend):
         # instead of a generic 500 from POST /connectors.
         self._validate_or_raise(config, connector_name)
         if self.exists(connector_name):
-            resp = requests.put(
-                self._endpoint(f"/connectors/{connector_name}/config"),
-                json=config, auth=self._auth, timeout=self.HTTP_TIMEOUT,
-            )
+            resp = self._request("put", f"/connectors/{connector_name}/config", json=config)
         else:
-            resp = requests.post(
-                self._endpoint("/connectors"),
-                json={"name": connector_name, "config": config},
-                auth=self._auth, timeout=self.HTTP_TIMEOUT,
-            )
+            resp = self._request("post", "/connectors", json={"name": connector_name, "config": config})
         if resp.status_code >= 400:
             raise RuntimeError(
                 f"Kafka Connect deploy failed ({resp.status_code}) for '{connector_name}': {resp.text}"
@@ -80,17 +92,16 @@ class RestBackend(DeploymentBackend):
         try:
             report = self.validate_config(plugin_class, config, connector_name=connector_name)
         except RuntimeError:
-            # KC unreachable or plugin not installed — surface that on the deploy call instead.
+            # Plugin not installed or KC rejected the call — surface that on the deploy call instead.
             return
+        except RequestException as exc:
+            raise RuntimeError(f"Kafka Connect validate failed for '{plugin_class}': {exc}") from exc
         field_errors = _extract_field_errors(report)
         if field_errors:
             raise ConfigValidationError(plugin_class, field_errors)
 
     def poll_status(self, connector_name: str) -> str:
-        resp = requests.get(
-            self._endpoint(f"/connectors/{connector_name}/status"),
-            auth=self._auth, timeout=self.HTTP_TIMEOUT,
-        )
+        resp = self._request("get", f"/connectors/{connector_name}/status")
         if resp.status_code == 404:
             return "UNKNOWN"
         if resp.status_code >= 400:
@@ -100,10 +111,7 @@ class RestBackend(DeploymentBackend):
         return effective_connect_status(resp.json())
 
     def delete(self, connector_name: str) -> None:
-        resp = requests.delete(
-            self._endpoint(f"/connectors/{connector_name}"),
-            auth=self._auth, timeout=self.HTTP_TIMEOUT,
-        )
+        resp = self._request("delete", f"/connectors/{connector_name}")
         if resp.status_code not in (200, 204, 404):
             raise RuntimeError(
                 f"Kafka Connect delete failed ({resp.status_code}) for '{connector_name}': {resp.text}"
@@ -138,10 +146,7 @@ class RestBackend(DeploymentBackend):
     def restart(self, name: str, include_tasks: bool = False, only_failed: bool = False) -> dict:
         params = {"includeTasks": str(include_tasks).lower(),
                   "onlyFailed":   str(only_failed).lower()}
-        resp = requests.post(
-            self._endpoint(f"/connectors/{name}/restart"),
-            params=params, auth=self._auth, timeout=self.HTTP_TIMEOUT,
-        )
+        resp = self._request("post", f"/connectors/{name}/restart", params=params)
         if resp.status_code not in (200, 202, 204):
             raise RuntimeError(
                 f"Kafka Connect restart failed ({resp.status_code}) for '{name}': {resp.text}"
@@ -149,10 +154,7 @@ class RestBackend(DeploymentBackend):
         return resp.json() if resp.text else {}
 
     def restart_task(self, name: str, task_id: int) -> None:
-        resp = requests.post(
-            self._endpoint(f"/connectors/{name}/tasks/{int(task_id)}/restart"),
-            auth=self._auth, timeout=self.HTTP_TIMEOUT,
-        )
+        resp = self._request("post", f"/connectors/{name}/tasks/{int(task_id)}/restart")
         if resp.status_code not in (200, 204):
             raise RuntimeError(
                 f"Kafka Connect restart task {task_id} failed ({resp.status_code}) for '{name}': {resp.text}"
@@ -160,10 +162,7 @@ class RestBackend(DeploymentBackend):
 
     # ── offset management (KC 3.6+) ──────────────────────────────────────
     def reset_offsets(self, name: str) -> dict:
-        resp = requests.delete(
-            self._endpoint(f"/connectors/{name}/offsets"),
-            auth=self._auth, timeout=self.HTTP_TIMEOUT,
-        )
+        resp = self._request("delete", f"/connectors/{name}/offsets")
         if resp.status_code >= 400:
             raise RuntimeError(
                 f"Kafka Connect reset offsets failed ({resp.status_code}) for '{name}': {resp.text}"
@@ -176,10 +175,7 @@ class RestBackend(DeploymentBackend):
         name = str(body.get("name") or connector_name or "").strip()
         if name:
             body["name"] = name
-        resp = requests.put(
-            self._endpoint(f"/connector-plugins/{plugin_class}/config/validate"),
-            json=body, auth=self._auth, timeout=self.HTTP_TIMEOUT,
-        )
+        resp = self._request("put", f"/connector-plugins/{plugin_class}/config/validate", json=body)
         if resp.status_code >= 400:
             raise RuntimeError(
                 f"Kafka Connect validate failed ({resp.status_code}) for '{plugin_class}': {resp.text}"
@@ -188,7 +184,7 @@ class RestBackend(DeploymentBackend):
 
     # ── internal helpers ─────────────────────────────────────────────────
     def _get(self, path: str):
-        resp = requests.get(self._endpoint(path), auth=self._auth, timeout=self.HTTP_TIMEOUT)
+        resp = self._request("get", path)
         if resp.status_code == 404:
             raise RuntimeError(f"Not found: {path}")
         if resp.status_code >= 400:
@@ -196,7 +192,7 @@ class RestBackend(DeploymentBackend):
         return resp.json()
 
     def _put_no_body(self, path: str, ok: tuple):
-        resp = requests.put(self._endpoint(path), auth=self._auth, timeout=self.HTTP_TIMEOUT)
+        resp = self._request("put", path)
         if resp.status_code not in ok and resp.status_code >= 400:
             raise RuntimeError(f"Kafka Connect PUT {path} failed ({resp.status_code}): {resp.text}")
 

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import random
 import unittest
 from types import SimpleNamespace
+
+from confluent_kafka import KafkaError
 
 from app.services.kafka.consume import consume_messages, list_topics
 from app.services.kafka.errors import KafkaBrowseError
@@ -85,6 +88,154 @@ class FakeConsumer:
 
     def close(self):
         self.closed = True
+
+
+class PartitionEof:
+    """What the consumer yields when it reaches the end of a partition."""
+
+    def __init__(self, partition):
+        self._partition = partition
+
+    def error(self):
+        return KafkaError(KafkaError._PARTITION_EOF)
+
+    def partition(self):
+        return self._partition
+
+
+class LogConsumer(FakeConsumer):
+    """Serves each assigned partition from its start offset to the end, then EOF, like Kafka."""
+
+    def __init__(self, logs: dict[int, list[int]]):
+        end = {part: max(offsets) + 1 for part, offsets in logs.items()}
+        beginning = {part: min(offsets) for part, offsets in logs.items()}
+        super().__init__(partitions=sorted(logs), beginning=beginning, end=end)
+        self._logs = logs
+
+    def assign(self, tps):
+        super().assign(tps)
+        self._records = []
+        for tp in tps:
+            self._records += self._deliver(tp.partition, [
+                FakeMessage(tp.partition, offset, None, b"v")
+                for offset in self._logs[tp.partition] if offset >= tp.offset
+            ])
+        self._index = 0
+        self.polls = 0
+
+    def _deliver(self, partition, messages):
+        return messages + [PartitionEof(partition)]
+
+    def poll(self, timeout=None):
+        self.polls += 1
+        return super().poll(timeout)
+
+
+class CutOffConsumer(LogConsumer):
+    """Sometimes stops a partition partway, as when the poll deadline or idle break hits."""
+
+    def __init__(self, logs, rng):
+        super().__init__(logs)
+        self._rng = rng
+
+    def _deliver(self, partition, messages):
+        if self._rng.random() < 0.5:
+            return messages[:self._rng.randint(0, len(messages))]
+        return super()._deliver(partition, messages)
+
+
+def _page_back(logs, limit, max_pages=100, consumer=LogConsumer):
+    """Load the newest page, then "Load older" until hasOlder is False."""
+    seen, before = [], None
+    for _ in range(max_pages):
+        fake = consumer(logs)
+        payload = consume_messages(
+            {"bootstrap.servers": "kafka:9092"}, "orders",
+            limit=limit, before=before, consumer_factory=lambda _conf: fake,
+        )
+        seen += [(item["partition"], item["offset"]) for item in payload["messages"]]
+        if not payload["hasOlder"]:
+            return seen
+        before = payload["cursor"]
+    raise AssertionError(f"still hasOlder after {max_pages} pages; seen {len(seen)} records")
+
+
+class OlderPagingTests(unittest.TestCase):
+    def test_pages_back_through_partitions_of_different_depth(self):
+        seen = _page_back({0: list(range(10)), 1: list(range(30))}, limit=10)
+        self.assertEqual(len(seen), len(set(seen)), "a record was served twice")
+        self.assertEqual(set(seen), {(0, o) for o in range(10)} | {(1, o) for o in range(30)})
+
+    def test_exhausted_partition_is_not_fetched_and_keeps_its_cursor(self):
+        fake = LogConsumer({0: list(range(10)), 1: list(range(30))})
+        payload = consume_messages(
+            {"bootstrap.servers": "kafka:9092"}, "orders",
+            limit=10, before={"0": 0, "1": 20}, consumer_factory=lambda _conf: fake,
+        )
+        self.assertEqual([tp.partition for tp in fake.assigned], [1])
+        self.assertEqual({item["partition"] for item in payload["messages"]}, {1})
+        self.assertEqual(payload["cursor"], {"0": 0, "1": 10})
+        self.assertTrue(payload["hasOlder"])
+
+    def test_last_partition_reaching_its_start_ends_paging(self):
+        fake = LogConsumer({0: list(range(10)), 1: list(range(30))})
+        payload = consume_messages(
+            {"bootstrap.servers": "kafka:9092"}, "orders",
+            limit=10, before={"0": 0, "1": 5}, consumer_factory=lambda _conf: fake,
+        )
+        self.assertEqual(payload["cursor"], {"0": 0, "1": 0})
+        self.assertFalse(payload["hasOlder"])
+
+    def test_compacted_gap_still_reaches_the_oldest_records(self):
+        seen = _page_back({0: [0, 1, 50, 51]}, limit=2)
+        self.assertEqual(sorted(seen), [(0, 0), (0, 1), (0, 50), (0, 51)])
+
+    def test_cut_off_windows_are_retried_without_gaps_or_repeats(self):
+        logs = {0: list(range(12)), 1: list(range(40)), 2: list(range(3))}
+        for seed in range(30):
+            rng = random.Random(seed)
+            seen = _page_back(logs, limit=6, max_pages=500, consumer=lambda lg: CutOffConsumer(lg, rng))
+            self.assertEqual(len(seen), len(set(seen)), f"seed {seed}: a record was served twice")
+            self.assertEqual(set(seen), {(p, o) for p, offsets in logs.items() for o in offsets}, f"seed {seed}")
+
+    def test_window_cut_after_its_first_record_is_not_served(self):
+        class FirstOnly(LogConsumer):
+            def _deliver(self, partition, messages):
+                return messages[:1]
+
+        fake = FirstOnly({0: list(range(30))})
+        payload = consume_messages(
+            {"bootstrap.servers": "kafka:9092"}, "orders",
+            limit=10, before={"0": 20}, consumer_factory=lambda _conf: fake,
+        )
+        self.assertEqual(payload["messages"], [])
+        self.assertEqual(payload["cursor"], {"0": 20})
+        self.assertTrue(payload["hasOlder"])
+
+    def test_stops_polling_once_every_partition_is_read(self):
+        fake = LogConsumer({0: [0, 1], 1: [0, 1, 2]})
+        payload = consume_messages({"bootstrap.servers": "kafka:9092"}, "orders", limit=10,
+                                   consumer_factory=lambda _conf: fake)
+        self.assertEqual(payload["count"], 5)
+        self.assertLessEqual(fake.polls, len(fake._records), "kept polling after both partitions were read")
+
+    def test_exhausted_partitions_leave_the_limit_to_the_others(self):
+        fake = LogConsumer({0: list(range(10)), 1: list(range(30))})
+        payload = consume_messages(
+            {"bootstrap.servers": "kafka:9092"}, "orders",
+            limit=10, before={"0": 0, "1": 30}, consumer_factory=lambda _conf: fake,
+        )
+        self.assertEqual([(tp.partition, tp.offset) for tp in fake.assigned], [(1, 20)])
+        self.assertEqual(payload["count"], 10)
+
+    def test_partition_that_did_not_answer_is_retried_not_skipped(self):
+        fake = FakeConsumer(records=[], partitions=[0], beginning={0: 0}, end={0: 30})
+        payload = consume_messages(
+            {"bootstrap.servers": "kafka:9092"}, "orders",
+            limit=10, before={"0": 20}, consumer_factory=lambda _conf: fake,
+        )
+        self.assertEqual(payload["cursor"], {"0": 20})
+        self.assertTrue(payload["hasOlder"])
 
 
 class ListTopicsTests(unittest.TestCase):
