@@ -66,8 +66,8 @@ import re
 import json
 import os
 
-_VAR_RE  = re.compile(r"\{\{\s*var\s*\(\s*['\"](\w[\w-]*)['\"]")
-_CONN_RE = re.compile(r"\{\{\s*conn\s*\(\s*['\"]([^'\"]+)['\"]")
+_VAR_RE  = re.compile(r"\{\{\s*var\s*\(\s*['\"](\w[\w-]*)['\"]\s*\)\s*\}\}")
+_CONN_RE = re.compile(r"\{\{\s*conn\s*\(\s*['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
 _ANY_RE  = re.compile(r"\{\{[^}]+\}\}")
 _CONN_MARKER_RE    = re.compile(r"\[connection:([^\]]+)\]")
 _ENV_VAR_MARKER_RE = re.compile(r'\$([A-Z_][A-Z0-9_]*)')
@@ -125,15 +125,19 @@ def resolve_yaml(raw: str, env: str) -> str:
 
 
 def _section_config(raw: str, section: str) -> dict:
-    """Extract key:value pairs under source.config or sink.config block."""
+    """Extract key:value pairs under source.config or sink.config block.
+
+    The search stays inside the section's own block, and the config body ends
+    at the first line that is not indented deeper than `config:`.
+    """
     m = re.search(
-        rf'^{section}:[\s\S]*?^\s+config:\s*\n((?:[ \t]+[\w.]+[ \t]*:[ \t]*[^\n]*\n?)+)',
-        raw, re.MULTILINE
+        r'^([ \t]+)config:\s*\n((?:\1[ \t]+[\w.]+[ \t]*:[ \t]*[^\n]*\n?)+)',
+        _extract_top_block(raw, section), re.MULTILINE
     )
     if not m:
         return {}
     config = {}
-    for km in re.finditer(r'^[ \t]+([\w.]+)[ \t]*:[ \t]*([^\n#]*)', m.group(1), re.MULTILINE):
+    for km in re.finditer(r'^[ \t]+([\w.]+)[ \t]*:[ \t]*([^\n#]*)', m.group(2), re.MULTILINE):
         val = km.group(2).strip().strip('"').strip("'")
         if val:
             config[km.group(1).strip()] = val
