@@ -50,6 +50,14 @@ def _build_app(Session):
     def make_conn():
         return jsonify({"created": True})
 
+    @app.get("/login")
+    def login_page():
+        return "login"
+
+    @app.route("/api/auth/<name>", methods=["GET", "POST"])
+    def fake_auth(name):
+        return jsonify({"endpoint": name})
+
     @app.post("/api/auth/logout")
     def fake_logout():
         from flask import session
@@ -158,6 +166,74 @@ class GuardEnabledTests(unittest.TestCase):
         self._add_admin()
         r = self.client.get("/api/connections", headers={"Host": "rebind.evil.example"})
         self.assertEqual(r.status_code, 401)
+
+
+class MustChangePasswordTests(unittest.TestCase):
+    """A user flagged must_change_password may only change it (or sign out)."""
+
+    REQUIRED = {"error": "Password change required", "code": "must_change_password"}
+
+    def setUp(self):
+        self.Session = _engine_session()
+        for p in (
+            patch.object(auth_mod, "auth_enabled", return_value=True),
+            patch.object(auth_mod, "SessionLocal", side_effect=_CtxFactory(self.Session)),
+        ):
+            p.start()
+            self.addCleanup(p.stop)
+        db = self.Session()
+        u = User(username="ana@corp.com", active=True, is_admin=True, must_change_password=True)
+        u.set_password("launch-ready-pass")
+        db.add(u)
+        db.commit()
+        db.close()
+        self.client = _build_app(self.Session).test_client()
+        self.client.post("/api/auth/login")
+
+    def test_api_blocked(self):
+        r = self.client.get("/api/connections")
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.get_json(), self.REQUIRED)
+
+    def test_mutation_blocked(self):
+        r = self.client.post("/api/connections", headers={"Origin": "http://localhost"})
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.get_json(), self.REQUIRED)
+
+    def test_page_redirects_to_login(self):
+        r = self.client.get("/")
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(r.headers["Location"].endswith("/login"))
+
+    def test_password_change_paths_allowed(self):
+        for method, path in (
+            ("GET", "/login"),
+            ("GET", "/api/auth/status"),
+            ("GET", "/api/auth/me"),
+            ("POST", "/api/auth/change-password"),
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.open(path, method=method).status_code, 200)
+
+    def test_logout_allowed(self):
+        self.assertEqual(self.client.post("/api/auth/logout").status_code, 200)
+
+    def test_other_auth_endpoints_blocked(self):
+        for path in ("/api/auth/active-role", "/api/auth/default-role"):
+            with self.subTest(path=path):
+                r = self.client.post(path)
+                self.assertEqual(r.status_code, 403)
+                self.assertEqual(r.get_json(), self.REQUIRED)
+
+    def test_static_assets_allowed(self):
+        self.assertEqual(self.client.get("/static/app.css").status_code, 404)
+
+    def test_access_restored_once_cleared(self):
+        db = self.Session()
+        db.query(User).update({"must_change_password": False})
+        db.commit()
+        db.close()
+        self.assertEqual(self.client.get("/api/connections").status_code, 200)
 
 
 class PersonalModeOriginTests(unittest.TestCase):

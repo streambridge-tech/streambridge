@@ -28,6 +28,16 @@ PAGE_FEATURE = {
     "/alerts":          "nav.alerts",
 }
 
+# What a user who must change their password can still reach, besides static files.
+PASSWORD_CHANGE_PATHS = frozenset({
+    "/login",
+    "/api/auth/status",
+    "/api/auth/login",
+    "/api/auth/me",
+    "/api/auth/change-password",
+    "/api/auth/logout",
+})
+
 # Used to equalize timing when a username does not exist, so login does not leak
 # which usernames are registered.
 _DUMMY_HASH = hash_password("dummy-timing-equalizer")
@@ -113,12 +123,12 @@ def _host_allowed() -> bool:
     return _hostname(request.host) in allowed
 
 
+def _is_static_path(path: str) -> bool:
+    return path.startswith("/static/") or path == "/favicon.ico"
+
+
 def _is_open_path(path: str) -> bool:
-    if path.startswith("/static/") or path == "/favicon.ico":
-        return True
-    if path == "/login" or path.startswith("/api/auth/"):
-        return True
-    return False
+    return path == "/login" or path.startswith("/api/auth/")
 
 
 def auth_guard():
@@ -137,16 +147,24 @@ def auth_guard():
     if request.method not in ("GET", "HEAD", "OPTIONS") and not _same_origin_ok():
         return jsonify({"error": "invalid origin"}), 403
 
-    if personal or _is_open_path(path):
+    if personal or _is_static_path(path):
         return None
 
     with SessionLocal() as db:
+        user = current_user(db)
+        if user is not None and user.must_change_password and path not in PASSWORD_CHANGE_PATHS:
+            if is_api:
+                return jsonify({"error": "Password change required", "code": "must_change_password"}), 403
+            return redirect("/login")  # the login page shows the change-password form
+
+        if _is_open_path(path):
+            return None
+
         if not admin_exists(db):
             if is_api:
                 return jsonify({"error": "setup required"}), 503
             return redirect("/login")
 
-        user = current_user(db)
         if user is None:
             if is_api:
                 return jsonify({"error": "authentication required"}), 401
