@@ -41,7 +41,7 @@ jobs:
         run: python -m unittest discover -s tests -t .
 
       - name: Frontend test
-        run: node --experimental-vm-modules --test tests/js/connector_modal.test.mjs
+        run: node --experimental-vm-modules --test 'tests/js/*.test.mjs'
 
       - name: Built pages match the views
         run: |

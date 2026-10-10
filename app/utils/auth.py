@@ -1,14 +1,15 @@
 """Auth helpers, request guard, and app wiring (team mode).
 
-When `auth.enabled` is false (personal mode) the guard is a no-op and nothing
-about request handling changes. When true, every request must carry a valid
-session, and mutating requests must be same-origin.
+In both modes, mutating requests must be same-origin. When `auth.enabled` is
+false (personal mode) there is no login, so the guard also rejects any Host
+name the server was not configured for (DNS rebinding). When true, every
+request must carry a valid session.
 """
 from datetime import timedelta
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import g, jsonify, redirect, request, session
+from flask import current_app, g, jsonify, redirect, request, session
 
 from app.models.user import User
 from app.utils.config import get_config
@@ -26,6 +27,16 @@ PAGE_FEATURE = {
     "/schema-registry": "nav.registry",
     "/alerts":          "nav.alerts",
 }
+
+# What a user who must change their password can still reach, besides static files.
+PASSWORD_CHANGE_PATHS = frozenset({
+    "/login",
+    "/api/auth/status",
+    "/api/auth/login",
+    "/api/auth/me",
+    "/api/auth/change-password",
+    "/api/auth/logout",
+})
 
 # Used to equalize timing when a username does not exist, so login does not leak
 # which usernames are registered.
@@ -86,44 +97,84 @@ def current_active_role_id():
 def _same_origin_ok() -> bool:
     origin = request.headers.get("Origin") or request.headers.get("Referer")
     if not origin:
-        # No Origin/Referer: rely on the SameSite=Lax session cookie to block
-        # cross-site cookie-bearing requests.
+        # Browsers send Origin on every request other than GET and HEAD (as
+        # "null" when they hide it, which fails below), so a request with
+        # neither header comes from a non-browser client such as curl.
         return True
     return urlparse(origin).netloc == request.host
 
 
+def _hostname(value) -> str:
+    """Host header or setting without its port, lowercased. IPv6 keeps brackets."""
+    value = str(value or "").strip().lower()
+    if value.startswith("["):
+        return value.split("]", 1)[0] + "]"
+    if value.count(":") > 1:
+        return f"[{value}]"
+    return value.split(":", 1)[0]
+
+
+def _host_allowed() -> bool:
+    names = [
+        "localhost", "127.0.0.1", "[::1]",
+        current_app.config.get("SERVER_HOST"),
+        *(current_app.config.get("SERVER_ALLOWED_HOSTS") or ()),
+    ]
+    allowed = {_hostname(name) for name in names} - {""}
+    return _hostname(request.host) in allowed
+
+
+def _is_static_path(path: str) -> bool:
+    return path.startswith("/static/") or path == "/favicon.ico"
+
+
 def _is_open_path(path: str) -> bool:
-    if path.startswith("/static/") or path == "/favicon.ico":
-        return True
-    if path == "/login" or path.startswith("/api/auth/"):
-        return True
-    return False
+    return path == "/login" or path.startswith("/api/auth/")
 
 
 def auth_guard():
     """before_request handler. Returns a response to short-circuit, else None."""
-    if not auth_enabled():
-        return None
-
     path = request.path
-    if _is_open_path(path):
+    is_api = path.startswith("/api/")
+    personal = not auth_enabled()
+
+    # Personal mode has no sign-in, and first-run setup hands out the admin
+    # account, so a page on a rebound DNS name could take either over. Answer
+    # them only on the names the server is meant to be reached by.
+    is_setup = path == "/api/auth/setup"
+    if (personal or is_setup) and not _host_allowed():
+        message = "Host not allowed. Add it to server.allowed_hosts in profile.yaml."
+        if is_setup:
+            message += " Or create the first admin on the server with: python3 manage.py admin bootstrap"
+        if is_api:
+            return jsonify({"error": "invalid host", "message": message}), 403
+        return message, 403, {"Content-Type": "text/plain"}
+
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not _same_origin_ok():
+        return jsonify({"error": "invalid origin"}), 403
+
+    if personal or _is_static_path(path):
         return None
 
-    is_api = path.startswith("/api/")
     with SessionLocal() as db:
+        user = current_user(db)
+        if user is not None and user.must_change_password and path not in PASSWORD_CHANGE_PATHS:
+            if is_api:
+                return jsonify({"error": "Password change required", "code": "must_change_password"}), 403
+            return redirect("/login")  # the login page shows the change-password form
+
+        if _is_open_path(path):
+            return None
+
         if not admin_exists(db):
             if is_api:
                 return jsonify({"error": "setup required"}), 503
             return redirect("/login")
 
-        user = current_user(db)
         if user is None:
             if is_api:
                 return jsonify({"error": "authentication required"}), 401
             return redirect("/login")
-
-        if request.method in ("POST", "PUT", "PATCH", "DELETE") and not _same_origin_ok():
-            return jsonify({"error": "invalid origin"}), 403
 
         # Page routes behind a feature gate (rail + page). APIs enforce their own ops.
         if not is_api and path in PAGE_FEATURE:

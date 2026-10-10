@@ -46,9 +46,23 @@ def _build_app(Session):
     def list_conns():
         return jsonify({"ok": True})
 
-    @app.post("/api/connections")
+    @app.route("/api/connections", methods=["POST", "PUT", "PATCH", "DELETE"])
     def make_conn():
         return jsonify({"created": True})
+
+    @app.get("/login")
+    def login_page():
+        return "login"
+
+    @app.route("/api/auth/<name>", methods=["GET", "POST"])
+    def fake_auth(name):
+        return jsonify({"endpoint": name})
+
+    @app.post("/api/auth/logout")
+    def fake_logout():
+        from flask import session
+        session.clear()
+        return jsonify({"ok": True})
 
     @app.post("/api/auth/login")
     def fake_login():
@@ -134,6 +148,193 @@ class GuardEnabledTests(unittest.TestCase):
         self.client.post("/api/auth/login")
         r = self.client.post("/api/connections", headers={"Origin": "http://localhost"})
         self.assertEqual(r.status_code, 200)
+
+    def test_cross_site_logout_blocked(self):
+        self._add_admin()
+        self.client.post("/api/auth/login")
+        r = self.client.post("/api/auth/logout", headers={"Origin": "http://evil.example"})
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.client.get("/api/connections").status_code, 200)
+
+    def test_cross_site_login_blocked(self):
+        self._add_admin()
+        r = self.client.post("/api/auth/login", headers={"Origin": "http://evil.example"})
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.client.get("/api/connections").status_code, 401)
+
+    def test_host_header_not_checked(self):
+        self._add_admin()
+        r = self.client.get("/api/connections", headers={"Host": "rebind.evil.example"})
+        self.assertEqual(r.status_code, 401)
+
+
+class MustChangePasswordTests(unittest.TestCase):
+    """A user flagged must_change_password may only change it (or sign out)."""
+
+    REQUIRED = {"error": "Password change required", "code": "must_change_password"}
+
+    def setUp(self):
+        self.Session = _engine_session()
+        for p in (
+            patch.object(auth_mod, "auth_enabled", return_value=True),
+            patch.object(auth_mod, "SessionLocal", side_effect=_CtxFactory(self.Session)),
+        ):
+            p.start()
+            self.addCleanup(p.stop)
+        db = self.Session()
+        u = User(username="ana@corp.com", active=True, is_admin=True, must_change_password=True)
+        u.set_password("launch-ready-pass")
+        db.add(u)
+        db.commit()
+        db.close()
+        self.client = _build_app(self.Session).test_client()
+        self.client.post("/api/auth/login")
+
+    def test_api_blocked(self):
+        r = self.client.get("/api/connections")
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.get_json(), self.REQUIRED)
+
+    def test_mutation_blocked(self):
+        r = self.client.post("/api/connections", headers={"Origin": "http://localhost"})
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.get_json(), self.REQUIRED)
+
+    def test_page_redirects_to_login(self):
+        r = self.client.get("/")
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(r.headers["Location"].endswith("/login"))
+
+    def test_password_change_paths_allowed(self):
+        for method, path in (
+            ("GET", "/login"),
+            ("GET", "/api/auth/status"),
+            ("GET", "/api/auth/me"),
+            ("POST", "/api/auth/change-password"),
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.open(path, method=method).status_code, 200)
+
+    def test_logout_allowed(self):
+        self.assertEqual(self.client.post("/api/auth/logout").status_code, 200)
+
+    def test_other_auth_endpoints_blocked(self):
+        for path in ("/api/auth/active-role", "/api/auth/default-role"):
+            with self.subTest(path=path):
+                r = self.client.post(path)
+                self.assertEqual(r.status_code, 403)
+                self.assertEqual(r.get_json(), self.REQUIRED)
+
+    def test_static_assets_allowed(self):
+        self.assertEqual(self.client.get("/static/app.css").status_code, 404)
+
+    def test_access_restored_once_cleared(self):
+        db = self.Session()
+        db.query(User).update({"must_change_password": False})
+        db.commit()
+        db.close()
+        self.assertEqual(self.client.get("/api/connections").status_code, 200)
+
+
+class PersonalModeOriginTests(unittest.TestCase):
+    """Personal mode has no session, so the Origin check is the only CSRF defense."""
+
+    def setUp(self):
+        p = patch.object(auth_mod, "auth_enabled", return_value=False)
+        p.start()
+        self.addCleanup(p.stop)
+        self.client = _build_app(_engine_session()).test_client()
+
+    def test_cross_site_text_plain_post_blocked(self):
+        r = self.client.post(
+            "/api/connections", data='{"name": "x"}', content_type="text/plain",
+            headers={"Origin": "http://evil.example"},
+        )
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.get_json(), {"error": "invalid origin"})
+
+    def test_every_mutating_method_is_checked(self):
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            with self.subTest(method=method):
+                r = self.client.open("/api/connections", method=method, headers={"Origin": "http://evil.example"})
+                self.assertEqual(r.status_code, 403)
+
+    def test_cross_site_referer_blocked(self):
+        r = self.client.post("/api/connections", headers={"Referer": "http://evil.example/page"})
+        self.assertEqual(r.status_code, 403)
+
+    def test_opaque_origin_blocked(self):
+        r = self.client.post("/api/connections", headers={"Origin": "null"})
+        self.assertEqual(r.status_code, 403)
+
+    def test_cross_site_auth_endpoint_blocked(self):
+        r = self.client.post("/api/auth/logout", headers={"Origin": "http://evil.example"})
+        self.assertEqual(r.status_code, 403)
+
+    def test_same_origin_post_allowed(self):
+        r = self.client.post("/api/connections", headers={"Origin": "http://localhost"})
+        self.assertEqual(r.status_code, 200)
+
+    def test_post_without_origin_or_referer_allowed(self):
+        # CLI clients send neither header; browsers always send Origin on a POST.
+        self.assertEqual(self.client.post("/api/connections").status_code, 200)
+
+    def test_cross_site_get_allowed(self):
+        r = self.client.get("/api/connections", headers={"Origin": "http://evil.example"})
+        self.assertEqual(r.status_code, 200)
+
+
+class PersonalModeHostTests(unittest.TestCase):
+    """A DNS-rebinding page reaches the loopback server under its own Host name."""
+
+    def setUp(self):
+        p = patch.object(auth_mod, "auth_enabled", return_value=False)
+        p.start()
+        self.addCleanup(p.stop)
+        self.app = _build_app(_engine_session())
+        self.client = self.app.test_client()
+
+    def _get(self, path, host):
+        return self.client.get(path, headers={"Host": host})
+
+    def test_loopback_hosts_allowed_on_any_port(self):
+        for host in ("localhost", "localhost:5000", "127.0.0.1:5302", "[::1]:5000", "LOCALHOST:8080"):
+            with self.subTest(host=host):
+                self.assertEqual(self._get("/api/connections", host).status_code, 200)
+
+    def test_unknown_host_blocked_for_api_with_json(self):
+        r = self._get("/api/connections", "rebind.evil.example:5000")
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.get_json()["error"], "invalid host")
+        self.assertIn("server.allowed_hosts", r.get_json()["message"])
+
+    def test_unknown_host_blocked_for_pages_with_text(self):
+        r = self._get("/", "rebind.evil.example")
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(r.content_type.startswith("text/plain"))
+
+    def test_unknown_host_blocked_for_static_and_login(self):
+        for path in ("/static/app.js", "/login", "/api/auth/status"):
+            with self.subTest(path=path):
+                self.assertEqual(self._get(path, "rebind.evil.example").status_code, 403)
+
+    def test_rebound_same_origin_post_blocked(self):
+        r = self.client.post(
+            "/api/connections",
+            headers={"Host": "rebind.evil.example", "Origin": "http://rebind.evil.example"},
+        )
+        self.assertEqual(r.status_code, 403)
+
+    def test_configured_server_host_allowed(self):
+        self.app.config["SERVER_HOST"] = "10.0.0.5"
+        self.assertEqual(self._get("/api/connections", "10.0.0.5:5000").status_code, 200)
+        self.assertEqual(self._get("/api/connections", "10.0.0.6:5000").status_code, 403)
+
+    def test_allowed_hosts_list_allowed(self):
+        self.app.config["SERVER_ALLOWED_HOSTS"] = ["streambridge.lan", "FD00::1"]
+        self.assertEqual(self._get("/api/connections", "streambridge.lan:5000").status_code, 200)
+        self.assertEqual(self._get("/api/connections", "[fd00::1]:5000").status_code, 200)
+        self.assertEqual(self._get("/api/connections", "other.lan").status_code, 403)
 
 
 if __name__ == "__main__":

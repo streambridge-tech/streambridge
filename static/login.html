@@ -175,6 +175,30 @@
         </form>
       </section>
 
+      <!-- Password change required (new account or admin reset) -->
+      <section id="view-password" hidden>
+        <div class="eyebrow">One more step</div>
+        <h1>Choose a new password</h1>
+        <p class="subtitle">Your password was set by an admin. Replace it with your own to continue.</p>
+        <form id="password-form">
+          <label for="cp-current">Current password</label>
+          <input id="cp-current" class="input" type="password" autocomplete="current-password" placeholder="••••••••">
+          <label for="cp-new">New password</label>
+          <input id="cp-new" class="input" type="password" autocomplete="new-password" placeholder="At least 10 characters">
+          <label for="cp-confirm">Confirm new password</label>
+          <input id="cp-confirm" class="input" type="password" autocomplete="new-password" placeholder="Re-enter password">
+          <button id="password-btn" class="btn" type="submit">
+            Update password
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <div id="password-msg" class="msg"></div>
+        </form>
+        <button id="password-signout" class="back" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Sign out
+        </button>
+      </section>
+
       <!-- First run · Step 1: choose mode -->
       <section id="view-welcome" hidden>
         <div class="steps"><span class="dot on"></span><span class="dot"></span></div>
@@ -274,6 +298,7 @@
       welcome:  document.getElementById('view-welcome'),
       personal: document.getElementById('view-personal'),
       team:     document.getElementById('view-team'),
+      password: document.getElementById('view-password'),
     };
     function show(name) {
       Object.entries(views).forEach(([k, el]) => { el.hidden = (k !== name); });
@@ -282,9 +307,11 @@
     }
     function setMsg(el, text, ok) { el.textContent = text || ''; el.className = 'msg' + (text ? (ok ? ' ok' : ' error') : ''); }
 
-    // Decide first-run vs returning.
-    fetch('/api/auth/status').then(r => r.json()).then(s => {
-      show(s && s.setupRequired ? 'welcome' : 'signin');
+    // Decide first-run vs returning, or a signed-in user who must change their password.
+    fetch('/api/auth/status').then(r => r.json()).then(async s => {
+      if (s && s.setupRequired) return show('welcome');
+      const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => ({}));
+      show(me.user && me.user.mustChangePassword ? 'password' : 'signin');
     }).catch(() => show('signin'));
 
     // Returning sign-in
@@ -303,11 +330,41 @@
             password: document.getElementById('password').value,
           }),
         });
-        if (res.ok) { window.location.href = '/'; return; }
         const body = await res.json().catch(() => ({}));
+        if (res.ok) {
+          if (body.user && body.user.mustChangePassword) return show('password');
+          window.location.href = '/';
+          return;
+        }
         setMsg(signinMsg, body.error || 'Sign in failed');
       } catch { setMsg(signinMsg, 'Network error'); }
       finally { signinBtn.disabled = false; }
+    });
+
+    // Required password change, then on to the app.
+    const passwordForm = document.getElementById('password-form');
+    const passwordBtn = document.getElementById('password-btn');
+    const passwordMsg = document.getElementById('password-msg');
+    passwordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById('cp-new').value;
+      if (newPassword !== document.getElementById('cp-confirm').value) return setMsg(passwordMsg, 'New passwords do not match.');
+      setMsg(passwordMsg, '');
+      passwordBtn.disabled = true;
+      try {
+        const res = await fetch('/api/auth/change-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword: document.getElementById('cp-current').value, newPassword }),
+        });
+        if (res.ok) { window.location.href = '/'; return; }
+        const body = await res.json().catch(() => ({}));
+        setMsg(passwordMsg, body.error || 'Could not update password');
+      } catch { setMsg(passwordMsg, 'Network error'); }
+      finally { passwordBtn.disabled = false; }
+    });
+    document.getElementById('password-signout').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      show('signin');
     });
 
     // Step 1: choose mode
@@ -341,7 +398,7 @@
         if (res.status === 404) {
           setMsg(msgEl, 'Setup backend is being wired up next — this is the new design preview.');
         } else {
-          setMsg(msgEl, body.error || 'Could not complete setup.');
+          setMsg(msgEl, body.message || body.error || 'Could not complete setup.');
         }
       } catch {
         setMsg(msgEl, 'Network error — please try again.');

@@ -53,7 +53,7 @@ uv run main.py
 Settings live in `profile.yaml`.
 
 - **Database.** Set `database.backend` to `sqlite`, `mysql`, or `postgresql`, then fill that backend's host, database, username, and password. Leave a field blank to read it from `STREAMBRIDGE__DATABASE__*` in the environment (or an optional `.env`; see `.env.example`). A value already in the file is kept. SQLite needs nothing.
-- **Server.** `server.port` defaults to `5000`.
+- **Server.** `python3 main.py` listens on `server.host` (default `127.0.0.1`) and `server.port` (default `5000`). `server.debug` (default `false`) turns on the Werkzeug debugger and reloader, so keep it off on any host others can reach. Blank fields read `STREAMBRIDGE__SERVER__*`. In personal mode the server answers only to `localhost`, `127.0.0.1`, `[::1]`, and `server.host`; list any other host name you open it by in `server.allowed_hosts`.
 - **Kafka Connect.** `kafka_connect.url` is only a default — each environment uses the Kafka Connect connection you save in the UI.
 
 ### Session key
@@ -185,11 +185,13 @@ Team mode is built deny‑by‑default:
 - **Passwords** are hashed with Argon2id — never stored or logged in plaintext.
 - **Sessions** use signed, `HttpOnly`, `SameSite=Lax` cookies. Set `auth.cookie_secure: true` when serving over HTTPS.
 - **RBAC** is enforced on every page and API route (no permission, no access). The superuser flag exists only for recovery.
-- **Mutating requests** are same‑origin checked (CSRF defense).
+- **Mutating requests** (anything but `GET`, `HEAD`, and `OPTIONS`) must be same‑origin in both modes, sign‑in and sign‑out included (CSRF defense). A request with neither `Origin` nor `Referer`, such as one from `curl`, is allowed.
 - **Audit log** records who deployed, paused, or deleted.
 - **Secrets** live in vaults and are referenced by token (`{bag.key}`). They are masked in the UI and kept out of logs (configs log key names only, never values). They are stored in the StreamBridge database, so protect that database and wire in an external secrets manager for production.
 
-**Personal mode has no gate by design** — run it on `127.0.0.1` and do not expose the port to a network.
+**Personal mode has no sign‑in by design** — anyone who can reach the port can do everything, so run it on `127.0.0.1` and do not expose the port to a network. It answers only to `localhost`, `127.0.0.1`, `[::1]`, `server.host`, and the names in `server.allowed_hosts`, so a web page cannot reach it through DNS rebinding.
+
+**First‑run setup** creates the first admin, so in either mode it answers only on those same host names. To set up a remote server by its own name, add that name to `server.allowed_hosts` first, or create the admin on the server with `python3 manage.py admin bootstrap`.
 
 Found a security issue? Please report it privately to the maintainers rather than opening a public issue.
 
@@ -211,7 +213,7 @@ uv sync
 uv run pre-commit install
 uv run pre-commit run --all-files
 uv run python -m unittest discover -s tests -t .
-node --experimental-vm-modules --test tests/js/connector_modal.test.mjs
+node --experimental-vm-modules --test 'tests/js/*.test.mjs'
 uv run python build.py
 ```
 
