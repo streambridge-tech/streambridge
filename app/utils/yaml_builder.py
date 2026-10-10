@@ -409,12 +409,14 @@ def build_pipeline(raw: str, env: str, db) -> dict:
     src_validator = get_connector("source", src_type)
     if src_validator:
         prefix_field = src_validator.TOPIC_PREFIX_FIELD or "topic.prefix"
-        # A plugin placeholder ("", "*******") means unset: fall back to connector_name.
+        # Debezium requires a prefix. When it is unset or a plugin placeholder
+        # ("", "*******"), deploy with connector_name as the prefix.
         if is_placeholder(src_config.get(prefix_field)):
-            src_config.pop(prefix_field, None)
-        prefix = src_config.get(prefix_field)
-        checked = f'{prefix_field} "{prefix}"' if prefix else f'connector_name "{src_name}"'
-        if not re.match(r'^[a-zA-Z0-9._-]+$', prefix or src_name):
+            src_config[prefix_field] = src_name
+            checked = f'connector_name "{src_name}" (used as {prefix_field})'
+        else:
+            checked = f'{prefix_field} "{src_config[prefix_field]}"'
+        if not re.match(r'^[a-zA-Z0-9._-]+$', src_config[prefix_field]):
             log("warn", f'{checked} contains characters invalid for a Kafka topic prefix')
             log("warn", f'Fix: set  {prefix_field}: <valid-prefix>  explicitly under source.config:')
         else:
