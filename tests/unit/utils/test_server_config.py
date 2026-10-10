@@ -13,7 +13,10 @@ CONFIG_SRC = ROOT / "app" / "utils" / "config.py"
 
 class ServerConfigTests(unittest.TestCase):
     def setUp(self):
-        saved = {k: v for k, v in os.environ.items() if k == "FLASK_ENV" or k.startswith("STREAMBRIDGE__SERVER__")}
+        saved = {
+            k: v for k, v in os.environ.items()
+            if k in ("FLASK_ENV", "FLASK_DEBUG") or k.startswith("STREAMBRIDGE__SERVER__")
+        }
         for key in saved:
             os.environ.pop(key)
         self.addCleanup(os.environ.update, saved)
@@ -80,6 +83,17 @@ class ServerConfigTests(unittest.TestCase):
 
     def test_flask_env_production_keeps_debug_off(self):
         config = self._load("server:\n  debug: true\n", {"FLASK_ENV": "production"})
+        self.assertFalse(config.get_config().DEBUG)
+
+    def test_flask_debug_turns_debug_on(self):
+        # `flask run --debug` sets FLASK_DEBUG=1 before it imports the app.
+        self.assertTrue(self._load("server: {}\n", {"FLASK_DEBUG": "1"}).get_config().DEBUG)
+
+    def test_flask_debug_zero_keeps_debug_off(self):
+        self.assertFalse(self._load("server: {}\n", {"FLASK_DEBUG": "0"}).get_config().DEBUG)
+
+    def test_flask_env_production_overrides_flask_debug(self):
+        config = self._load("server: {}\n", {"FLASK_ENV": "production", "FLASK_DEBUG": "1"})
         self.assertFalse(config.get_config().DEBUG)
 
 

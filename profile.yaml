@@ -7,7 +7,7 @@ server:
   host: "127.0.0.1"
   port: 5000
   # true turns on the Werkzeug debugger and reloader. Never on a reachable host.
-  # FLASK_ENV=development turns it on too; FLASK_ENV=production keeps it off.
+  # FLASK_ENV=development or FLASK_DEBUG=1 turns it on too; FLASK_ENV=production keeps it off.
   debug: false
   # Personal mode answers only to localhost, 127.0.0.1, [::1], and server.host.
   # List any other host name you open it by. Left empty, StreamBridge reads

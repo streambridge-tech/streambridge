@@ -3,6 +3,7 @@ import pathlib
 from urllib.parse import quote_plus
 
 import yaml
+from flask.helpers import get_debug_flag
 
 ROOT = pathlib.Path(__file__).parent.parent.parent
 STATIC_DIR = ROOT / "static"
@@ -134,7 +135,8 @@ def get_database_url() -> str:
 
 class Config:
     # Debug turns on the Werkzeug debugger, which runs code typed into an error page.
-    DEBUG: bool = _as_bool(_prefer(_get("server", "debug"), _env("server", "debug"), False))
+    # FLASK_DEBUG (set by `flask run --debug`) opts in too.
+    DEBUG: bool = _as_bool(_prefer(_get("server", "debug"), _env("server", "debug"), False)) or get_debug_flag()
     TESTING = False
 
     APP_NAME: str    = _get("app", "name", "StreamBridge")
