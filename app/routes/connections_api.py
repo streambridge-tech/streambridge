@@ -245,15 +245,28 @@ def test_connection():
         cfg: dict = {}
         for k in ("host", "port", "database", "username", "password", "url", "token"):
             v = data.get(k)
-            if v not in (None, ""):
+            if v not in (None, "", SECRET_MASK):
                 cfg[k] = v
+
+        # A saved channel echoes its webhook secret masked or not at all: test the stored
+        # config as saved, so the stored secret only ever goes to the stored host.
+        conn_id = data.get("id")
+        if conn_id is not None and not cfg.get("password"):
+            with SessionLocal() as db:
+                saved = db.get(Connection, conn_id)
+            if saved and saved.subtype == subtype and isinstance(saved.config, dict):
+                cfg = dict(saved.config)
+
+        errors = channel.validate(cfg)
+        if errors:
+            return jsonify({"success": False, "message": "; ".join(errors)}), 400
 
         result = channel.test(cfg)
         log.info("Test notification subtype=%s success=%s latency=%dms", subtype, result.success, result.latency_ms)
         if result.success:
             msg = f"Delivered test message in {result.latency_ms}ms"
         else:
-            msg = result.error or f"HTTP {result.http_status}" if result.http_status else "Delivery failed"
+            msg = result.error or (f"HTTP {result.http_status}" if result.http_status else "Delivery failed")
         return jsonify({
             "success":    result.success,
             "message":    msg,

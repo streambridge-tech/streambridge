@@ -137,3 +137,81 @@ class ConnectionKindValidationTests(_ConnectionsApiCase):
         r = self.client.post("/api/connections/test", json={"type": 5, "subtype": "kafka-connect"})
         self.assertEqual(r.status_code, 400)
 
+
+class _Response:
+    def __init__(self, status_code=200, text="ok"):
+        self.status_code = status_code
+        self.text = text
+
+
+@patch("app.services.alerting.channels.slack.requests.post", return_value=_Response())
+class SavedNotificationTestTests(_ConnectionsApiCase):
+    """"Run now" and the inline "Test" post the masked secret; the stored one must be used."""
+
+    MASK = "•" * 8
+
+    def _slack(self):
+        return self._saved(name="alerts", type="notification", subtype="notification-slack",
+                           config={"host": "https://hooks.slack.com", "password": "/services/T0/B0/real"})
+
+    def test_run_now_uses_the_stored_webhook_secret(self, post):
+        row = self._slack()
+        body = {"id": row.id, "type": "notification", "subtype": "notification-slack", **row.to_dict()["config"]}
+        self.assertEqual(body["password"], self.MASK)
+        r = self.client.post("/api/connections/test", json=body)
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.assertTrue(r.get_json()["success"])
+        self.assertEqual(post.call_args.args[0], "https://hooks.slack.com/services/T0/B0/real")
+
+    def test_inline_test_without_a_secret_uses_the_stored_one(self, post):
+        row = self._slack()
+        r = self.client.post("/api/connections/test", json={
+            "id": row.id, "type": "notification", "subtype": "notification-slack",
+            "host": "https://hooks.slack.com",
+        })
+        self.assertTrue(r.get_json()["success"])
+        self.assertEqual(post.call_args.args[0], "https://hooks.slack.com/services/T0/B0/real")
+
+    def test_stored_secret_is_never_sent_to_a_different_host(self, post):
+        row = self._slack()
+        self.client.post("/api/connections/test", json={
+            "id": row.id, "type": "notification", "subtype": "notification-slack",
+            "host": "https://attacker.example", "password": self.MASK,
+        })
+        self.assertEqual(post.call_args.args[0], "https://hooks.slack.com/services/T0/B0/real")
+
+    def test_typed_secret_is_used_as_entered(self, post):
+        row = self._slack()
+        self.client.post("/api/connections/test", json={
+            "id": row.id, "type": "notification", "subtype": "notification-slack",
+            "host": "https://hooks.slack.com", "password": "/services/T0/B0/new",
+        })
+        self.assertEqual(post.call_args.args[0], "https://hooks.slack.com/services/T0/B0/new")
+
+    def test_mask_without_a_saved_connection_is_a_validation_error(self, post):
+        r = self.client.post("/api/connections/test", json={
+            "type": "notification", "subtype": "notification-slack",
+            "host": "https://hooks.slack.com", "password": self.MASK,
+        })
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(r.get_json()["success"])
+        self.assertIn("password", r.get_json()["message"])
+        post.assert_not_called()
+
+    def test_missing_host_reports_the_validation_message(self, post):
+        r = self.client.post("/api/connections/test", json={
+            "type": "notification", "subtype": "notification-gchat", "password": "/v1/spaces/x",
+        })
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("host", r.get_json()["message"])
+        self.assertNotEqual(r.get_json()["message"], "Delivery failed")
+
+    def test_delivery_failure_reports_the_http_error(self, post):
+        post.return_value = _Response(404, "no_service")
+        r = self.client.post("/api/connections/test", json={
+            "type": "notification", "subtype": "notification-slack",
+            "host": "https://hooks.slack.com", "password": "/services/T0/B0/gone",
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()["message"], "no_service")
+        self.assertEqual(r.get_json()["httpStatus"], 404)
