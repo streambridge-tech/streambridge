@@ -164,7 +164,7 @@ def require_converter(converter: str, extra: dict) -> None:
     }
     response = requests.put(
         f"{CONNECT}/connector-plugins/{CONNECTOR_CLASS}/config/validate",
-        json={"name": "converter-check", "config": config},
+        json=config,
         timeout=30,
     )
     if not response.ok:
