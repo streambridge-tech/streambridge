@@ -214,7 +214,7 @@ pip install pre-commit
 pre-commit install
 pre-commit run --all-files
 python3 -m unittest discover -s tests -t .
-node --test tests/js/connector_modal.test.mjs
+node --experimental-vm-modules --test tests/js/connector_modal.test.mjs
 python3 build.py
 ```
 
