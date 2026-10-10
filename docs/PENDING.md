@@ -1,6 +1,6 @@
 # Pending
 
-Open work for StreamBridge 0.1.0. Pick a number and do that item. Do not start the Later list until the Now list is done.
+Open work for StreamBridge. Pick a number and do that item. Do not start the Later list until the Now list is done.
 
 Items below are open unless marked Done or Partly done.
 
@@ -13,7 +13,7 @@ Items below are open unless marked Done or Partly done.
 
 2.5 logging enables
 
-2.6 for streambridge db pass and username set hardcode in profile.yml
+2.6 Done (item 7). The StreamBridge database user and password are no longer hardcoded in profile.yaml.
 2.7 Done (item 8). A policy belongs to one connector. The New picker loads /api/notebooks/, not /api/pipelines, so a new alert can be aimed at the connector you just deployed.
 
 
@@ -45,7 +45,7 @@ Items below are open unless marked Done or Partly done.
 10. **Secrets are only masked on screen.** Vault values and connector passwords sit in the StreamBridge database. Remove any secret that is still committed: passwords, tokens, keys, and connection strings in the tree and in git history where a current file still has them.
 11. **Kubernetes deploy gives up too early.** After a Strimzi create, Connect status stays unknown until the operator reconciles. The wait is about 20 seconds, then the deploy is reported failed even if the connector comes up later. Keep polling until the connector exists or a real error comes back.
 12. **The alert checker dies with the Flask process.** It runs inside `main.py`. Stopping the process stops alerts. Two processes can fire the same rule twice.
-13. **No audit.** Partly done. The audit log records who deployed or deleted a connector and who ran a Connect pause, resume, restart, offset reset, or delete. Pipeline deploys and plugin, connection, vault, and user changes are not recorded yet.
+13. **No audit.** Partly done. The audit log records who deployed or deleted a connector and who ran a Connect pause, resume, restart, offset reset, or delete. Pipeline deploys and plugin and connection changes are not recorded yet.
 
 ## Prove it
 
