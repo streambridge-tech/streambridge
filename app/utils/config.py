@@ -133,7 +133,8 @@ def get_database_url() -> str:
 
 
 class Config:
-    DEBUG = False
+    # Debug turns on the Werkzeug debugger, which runs code typed into an error page.
+    DEBUG: bool = _as_bool(_prefer(_get("server", "debug"), _env("server", "debug"), False))
     TESTING = False
 
     APP_NAME: str    = _get("app", "name", "StreamBridge")
@@ -161,16 +162,16 @@ class DevelopmentConfig(Config):
 
 
 class ProductionConfig(Config):
-    pass
+    DEBUG = False
 
 
 configs = {
     "development": DevelopmentConfig,
     "production":  ProductionConfig,
-    "default":     DevelopmentConfig,
+    "default":     Config,
 }
 
 
 def get_config():
     env = os.getenv("FLASK_ENV", "default")
-    return configs.get(env, DevelopmentConfig)
+    return configs.get(env, Config)

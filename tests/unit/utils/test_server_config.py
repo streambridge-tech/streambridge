@@ -7,7 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-CONFIG_SRC = Path(__file__).resolve().parents[3] / "app" / "utils" / "config.py"
+ROOT = Path(__file__).resolve().parents[3]
+CONFIG_SRC = ROOT / "app" / "utils" / "config.py"
 
 
 class ServerConfigTests(unittest.TestCase):
@@ -45,6 +46,26 @@ class ServerConfigTests(unittest.TestCase):
             {"STREAMBRIDGE__SERVER__ALLOWED_HOSTS": "streambridge.lan, 10.0.0.5 ,"},
         ).Config
         self.assertEqual(cfg.SERVER_ALLOWED_HOSTS, ["streambridge.lan", "10.0.0.5"])
+
+    def test_debug_off_by_default(self):
+        self.assertFalse(self._load("server: {}\n").get_config().DEBUG)
+
+    def test_shipped_profile_has_debug_off(self):
+        self.assertFalse(self._load((ROOT / "profile.yaml").read_text()).get_config().DEBUG)
+
+    def test_debug_from_profile(self):
+        self.assertTrue(self._load("server:\n  debug: true\n").get_config().DEBUG)
+
+    def test_debug_from_env_when_profile_blank(self):
+        config = self._load("server:\n  debug:\n", {"STREAMBRIDGE__SERVER__DEBUG": "true"})
+        self.assertTrue(config.get_config().DEBUG)
+
+    def test_flask_env_development_turns_debug_on(self):
+        self.assertTrue(self._load("server: {}\n", {"FLASK_ENV": "development"}).get_config().DEBUG)
+
+    def test_flask_env_production_keeps_debug_off(self):
+        config = self._load("server:\n  debug: true\n", {"FLASK_ENV": "production"})
+        self.assertFalse(config.get_config().DEBUG)
 
 
 if __name__ == "__main__":
