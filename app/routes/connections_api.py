@@ -25,14 +25,16 @@ def _retired_connection_error(conn_type: str, subtype: str):
     return None
 
 
-def _invalid_kind_error(data: dict, *, required: bool):
-    """`type` and `subtype` must be non-empty strings when sent (always, if required)."""
+def _invalid_body_error(data):
+    """The body must be an object, with `type`/`subtype` non-empty strings and `id` an integer when sent."""
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
     for field in ("type", "subtype"):
-        if field not in data and not required:
-            continue
-        value = data.get(field)
-        if not isinstance(value, str) or not value.strip():
+        if field in data and not (isinstance(data[field], str) and data[field].strip()):
             return jsonify({"error": f"'{field}' must be a non-empty string"}), 400
+    conn_id = data.get("id")
+    if conn_id is not None and (isinstance(conn_id, bool) or not isinstance(conn_id, int)):
+        return jsonify({"error": "'id' must be an integer"}), 400
     return None
 
 
@@ -75,13 +77,13 @@ def get_connection(conn_id: int):
 @require("connection.create")
 def create_connection():
     data = request.get_json(silent=True) or {}
+    invalid = _invalid_body_error(data)
+    if invalid:
+        return invalid
 
     for field in ("name", "type", "subtype"):
         if not data.get(field):
             return jsonify({"error": f"Missing required field: '{field}'"}), 400
-    invalid = _invalid_kind_error(data, required=True)
-    if invalid:
-        return invalid
 
     retired = _retired_connection_error(data.get("type"), data.get("subtype"))
     if retired:
@@ -140,7 +142,7 @@ def create_connection():
 @require("connection.save")
 def update_connection(conn_id: int):
     data = request.get_json(silent=True) or {}
-    invalid = _invalid_kind_error(data, required=False)
+    invalid = _invalid_body_error(data)
     if invalid:
         return invalid
     extra = data.get("extra", {})
@@ -221,7 +223,7 @@ def delete_connection(conn_id: int):
 @require("connection.test")
 def test_connection():
     data = request.get_json(silent=True) or {}
-    invalid = _invalid_kind_error(data, required=False)
+    invalid = _invalid_body_error(data)
     if invalid:
         return invalid
     conn_type = (data.get("type") or "").lower()

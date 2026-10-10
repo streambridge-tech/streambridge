@@ -137,6 +137,22 @@ class ConnectionKindValidationTests(_ConnectionsApiCase):
         r = self.client.post("/api/connections/test", json={"type": 5, "subtype": "kafka-connect"})
         self.assertEqual(r.status_code, 400)
 
+    def test_non_object_body_is_rejected(self):
+        row = self._saved_connect()
+        for method, url in (("post", "/api/connections"), ("put", f"/api/connections/{row.id}"),
+                            ("post", "/api/connections/test")):
+            r = getattr(self.client, method)(url, json=[1, 2])
+            self.assertEqual(r.status_code, 400, url)
+            self.assertIn("object", r.get_json()["error"])
+
+    def test_test_id_must_be_an_integer(self):
+        row = self._saved_connect()
+        for bad in ([1, 2], {}, True, str(row.id), 1.5):
+            r = self.client.post("/api/connections/test", json={
+                "id": bad, "type": "connect", "subtype": "kafka-connect", "url": "http://kc:8083"})
+            self.assertEqual(r.status_code, 400, bad)
+            self.assertIn("id", r.get_json()["error"])
+
 
 class _Response:
     def __init__(self, status_code=200, text="ok"):
