@@ -104,27 +104,32 @@ def consume_messages(
 
         tps = [TopicPartition(topic, part) for part in partitions]
         beginning = {}
-        end = {}
+        bound = {}  # exclusive upper offset for this page
+        starts = {}
         assigned = []
         per_partition = max(1, limit // len(tps))
         for tp in tps:
             low, high = consumer.get_watermark_offsets(tp, timeout=STANDARD_TIMEOUT_SEC)
             beginning[tp.partition] = int(low or 0)
-            end[tp.partition] = int(high or 0)
-            high_bound = end[tp.partition]
+            high_bound = int(high or 0)
             if before and str(tp.partition) in before:
                 try:
                     high_bound = min(high_bound, int(before[str(tp.partition)]))
                 except (TypeError, ValueError):
                     pass
+            bound[tp.partition] = high_bound
             start = max(beginning[tp.partition], high_bound - per_partition)
-            assigned.append(TopicPartition(topic, tp.partition, start))
-        consumer.assign(assigned)
+            starts[tp.partition] = start
+            # A partition with nothing below its bound is exhausted: don't fetch it.
+            if start < high_bound:
+                assigned.append(TopicPartition(topic, tp.partition, start))
 
         records: list[Any] = []
+        scanned: set[int] = set()  # partitions read past their window, so it held nothing more
+        consumer.assign(assigned)
         deadline = time.monotonic() + STANDARD_TIMEOUT_SEC
         idle = 0
-        while len(records) < limit and time.monotonic() < deadline:
+        while assigned and len(records) < limit and time.monotonic() < deadline:
             message = consumer.poll(0.5)
             if message is None:
                 idle += 1
@@ -135,15 +140,11 @@ def consume_messages(
             err = message.error()
             if err:
                 if err.code() == KafkaError._PARTITION_EOF:
+                    scanned.add(message.partition())
                     continue
                 raise KafkaBrowseError(err.str() or str(err))
-            high = end.get(message.partition(), 0)
-            if before and str(message.partition()) in before:
-                try:
-                    high = min(high, int(before[str(message.partition())]))
-                except (TypeError, ValueError):
-                    pass
-            if message.offset() >= high:
+            if message.offset() >= bound.get(message.partition(), 0):
+                scanned.add(message.partition())
                 continue
             records.append(message)
         records.sort(key=lambda item: (_message_ts(item) or 0, item.offset()), reverse=True)
@@ -155,11 +156,15 @@ def consume_messages(
         cursor = {}
         has_older = False
         for part in partitions:
-            low = beginning.get(part, 0)
             offsets = [item.offset() for item in records if item.partition() == part]
-            oldest = min(offsets) if offsets else end.get(part, 0)
+            if offsets:
+                oldest = min(offsets)
+            elif part in scanned:
+                oldest = starts[part]  # the window was empty (e.g. compacted); move past it
+            else:
+                oldest = bound[part]  # exhausted, or no answer yet: keep the cursor
             cursor[str(part)] = oldest
-            if oldest > low:
+            if oldest > beginning[part]:
                 has_older = True
         return {
             "topic": topic,
