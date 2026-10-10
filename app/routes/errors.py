@@ -1,8 +1,12 @@
-"""JSON error responses for /api/ routes. Pages keep Flask's HTML error pages."""
+"""JSON error responses for /api/ routes. Pages keep Flask's HTML error pages.
+
+In debug mode an API error is still a JSON 500, so the debugger never shows on an
+API URL. Under TESTING the exception propagates so tests see it.
+"""
 
 import json
 
-from flask import Flask, jsonify, request
+from flask import Flask, current_app, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 from app.utils.logger import get_logger
@@ -26,7 +30,7 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(Exception)
     def unhandled_error(exc: Exception):
-        if not _is_api():
-            raise exc  # Flask's own handling: HTML 500, or the debugger when propagating
+        if not _is_api() or current_app.testing:
+            raise exc  # Flask's own handling: HTML 500, the debugger, or propagate to the test
         log.exception("Unhandled error on %s %s", request.method, request.path)
         return jsonify({"error": "Internal server error"}), 500

@@ -62,12 +62,18 @@ class ApiErrorTests(unittest.TestCase):
         self.assertNotIn("hunter2", r.get_data(as_text=True))
         self.assertIn("RuntimeError", "\n".join(logs.output))
 
-    def test_debug_and_testing_still_return_json_for_the_api(self):
-        client = _app(DEBUG=True, TESTING=True).test_client()
+    def test_debug_still_returns_json_for_the_api(self):
+        client = _app(DEBUG=True).test_client()
         with self.assertLogs("app.routes.errors", level="ERROR"):
             r = client.get("/api/boom")
         self.assertEqual(r.status_code, 500)
         self.assertEqual(r.get_json(), {"error": "Internal server error"})
+        self.assertNotIn("hunter2", r.get_data(as_text=True))
+
+    def test_api_error_propagates_when_testing(self):
+        client = _app(TESTING=True).test_client()
+        with self.assertRaisesRegex(RuntimeError, "hunter2"):
+            client.get("/api/boom")
 
 
 class PageErrorTests(unittest.TestCase):
