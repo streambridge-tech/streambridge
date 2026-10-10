@@ -40,10 +40,10 @@ StreamBridge does not install Kafka, Connect, or Strimzi.
 
 ```bash
 cd streambridge
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-python3 build.py
+uv venv
+uv sync
+uv run python build.py
+uv run main.py
 ```
 
 `build.py` assembles the pages under `static/dist/`. Re‑run it after changing an HTML view; CSS/JS are served directly.
@@ -201,6 +201,23 @@ Found a security issue? Please report it privately to the maintainers rather tha
 - [Sandbox E2E (MySQL + schema registries + S3)](sandbox/ec2/e2e/README.md)
 - [Deploy on Kubernetes / Strimzi (local Docker Desktop)](sandbox/eks/local-strimzi/README.md)
 - [Deploy to Amazon EKS](sandbox/eks/README.md)
+
+## Contributing
+
+Fork the repository and open a pull request against `main`.
+
+```bash
+uv sync
+uv run pre-commit install
+uv run pre-commit run --all-files
+uv run python -m unittest discover -s tests -t .
+node --experimental-vm-modules --test tests/js/connector_modal.test.mjs
+uv run python build.py
+```
+
+Raise `version` in `pyproject.toml` above the latest `v*` tag. CI rejects the pull request when the version is missing or not newer. After the pull request merges and CI passes, GitHub creates the tag `v<version>` and a GitHub Release. If that tag already exists, the release workflow fails.
+
+Contributions are accepted under the Apache License 2.0.
 
 ## License
 
