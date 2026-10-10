@@ -305,7 +305,8 @@ class PersonalModeHostTests(unittest.TestCase):
     def test_unknown_host_blocked_for_api_with_json(self):
         r = self._get("/api/connections", "rebind.evil.example:5000")
         self.assertEqual(r.status_code, 403)
-        self.assertEqual(r.get_json(), {"error": "invalid host"})
+        self.assertEqual(r.get_json()["error"], "invalid host")
+        self.assertIn("server.allowed_hosts", r.get_json()["message"])
 
     def test_unknown_host_blocked_for_pages_with_text(self):
         r = self._get("/", "rebind.evil.example")

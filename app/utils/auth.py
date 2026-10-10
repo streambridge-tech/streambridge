@@ -137,12 +137,17 @@ def auth_guard():
     is_api = path.startswith("/api/")
     personal = not auth_enabled()
 
-    # Personal mode has no sign-in, so a page on a rebound DNS name could act as
-    # the owner. Answer only to the names the server is meant to be reached by.
-    if personal and not _host_allowed():
+    # Personal mode has no sign-in, and first-run setup hands out the admin
+    # account, so a page on a rebound DNS name could take either over. Answer
+    # them only on the names the server is meant to be reached by.
+    is_setup = path == "/api/auth/setup"
+    if (personal or is_setup) and not _host_allowed():
+        message = "Host not allowed. Add it to server.allowed_hosts in profile.yaml."
+        if is_setup:
+            message += " Or create the first admin on the server with: python3 manage.py admin bootstrap"
         if is_api:
-            return jsonify({"error": "invalid host"}), 403
-        return "Host not allowed. Add it to server.allowed_hosts in profile.yaml.", 403, {"Content-Type": "text/plain"}
+            return jsonify({"error": "invalid host", "message": message}), 403
+        return message, 403, {"Content-Type": "text/plain"}
 
     if request.method not in ("GET", "HEAD", "OPTIONS") and not _same_origin_ok():
         return jsonify({"error": "invalid origin"}), 403

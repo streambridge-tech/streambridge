@@ -398,7 +398,7 @@
         if (res.status === 404) {
           setMsg(msgEl, 'Setup backend is being wired up next — this is the new design preview.');
         } else {
-          setMsg(msgEl, body.error || 'Could not complete setup.');
+          setMsg(msgEl, body.message || body.error || 'Could not complete setup.');
         }
       } catch {
         setMsg(msgEl, 'Network error — please try again.');

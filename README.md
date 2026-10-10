@@ -191,6 +191,8 @@ Team mode is built deny‑by‑default:
 
 **Personal mode has no sign‑in by design** — anyone who can reach the port can do everything, so run it on `127.0.0.1` and do not expose the port to a network. It answers only to `localhost`, `127.0.0.1`, `[::1]`, `server.host`, and the names in `server.allowed_hosts`, so a web page cannot reach it through DNS rebinding.
 
+**First‑run setup** creates the first admin, so in either mode it answers only on those same host names. To set up a remote server by its own name, add that name to `server.allowed_hosts` first, or create the admin on the server with `python3 manage.py admin bootstrap`.
+
 Found a security issue? Please report it privately to the maintainers rather than opening a public issue.
 
 ## More docs

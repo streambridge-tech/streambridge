@@ -124,3 +124,15 @@ test("mismatched new passwords are caught before any request", async () => {
   assert.equal(page.el("password-msg").textContent, "New passwords do not match.");
   assert.ok(!page.requests.some(r => r.url === "/api/auth/change-password"));
 });
+
+test("a refused first-run setup shows the server's explanation", async () => {
+  const message = "Host not allowed. Add it to server.allowed_hosts in profile.yaml.";
+  const page = loadPage({
+    "/api/auth/status": [200, { setupRequired: true, authEnabled: true }],
+    "/api/auth/setup": [403, { error: "invalid host", message }],
+  });
+  await settle();
+  page.el("personal-btn").fire("click");
+  await settle();
+  assert.equal(page.el("personal-msg").textContent, message);
+});
