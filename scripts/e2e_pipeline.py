@@ -76,11 +76,7 @@ CONNECTORS = (
     ),
 )
 
-REQUIRED_PLUGINS = (
-    "io.debezium.connector.mysql.MySqlConnector",
-    "io.apicurio.registry.utils.converter.AvroConverter",
-    "io.confluent.connect.avro.AvroConverter",
-)
+CONNECTOR_CLASS = "io.debezium.connector.mysql.MySqlConnector"
 
 
 def _fail(message: str) -> None:
@@ -131,12 +127,59 @@ def create_connection() -> None:
 
 
 def require_plugins() -> None:
+    """Connect's plugin list contains connectors, not converters.
+
+    A missing Avro converter still fails here: config validation reports that
+    the class could not be found.
+    """
     listed = requests.get(f"{CONNECT}/connector-plugins", timeout=20)
     listed.raise_for_status()
     classes = {row.get("class") for row in listed.json()}
-    missing = [name for name in REQUIRED_PLUGINS if name not in classes]
+    if CONNECTOR_CLASS not in classes:
+        raise RuntimeError(f"Connect is missing {CONNECTOR_CLASS}")
+    require_converter(
+        "io.apicurio.registry.utils.converter.AvroConverter",
+        {
+            "key.converter.apicurio.registry.url": "http://registry:8080/apis/registry/v2",
+            "value.converter.apicurio.registry.url": "http://registry:8080/apis/registry/v2",
+            "key.converter.apicurio.registry.auto-register": "true",
+            "value.converter.apicurio.registry.auto-register": "true",
+        },
+    )
+    require_converter(
+        "io.confluent.connect.avro.AvroConverter",
+        {
+            "key.converter.schema.registry.url": "http://schema-registry:8081",
+            "value.converter.schema.registry.url": "http://schema-registry:8081",
+        },
+    )
+
+
+def require_converter(converter: str, extra: dict) -> None:
+    config = {
+        "connector.class": CONNECTOR_CLASS,
+        "key.converter": converter,
+        "value.converter": converter,
+        **extra,
+    }
+    response = requests.put(
+        f"{CONNECT}/connector-plugins/{CONNECTOR_CLASS}/config/validate",
+        json={"name": "converter-check", "config": config},
+        timeout=30,
+    )
+    if not response.ok:
+        raise RuntimeError(f"validate {converter} http={response.status_code} body={_json(response)}")
+    missing = []
+    for item in response.json().get("configs") or []:
+        value = item.get("value") or {}
+        if value.get("name") not in ("key.converter", "value.converter"):
+            continue
+        for error in value.get("errors") or []:
+            if "could not be found" in str(error).lower():
+                missing.append(str(error))
     if missing:
-        raise RuntimeError(f"Connect is missing plugins: {', '.join(missing)}")
+        raise RuntimeError(f"{converter} is not loadable: {missing[0]}")
+    print(f"converter loadable {converter}")
 
 
 def deploy(name: str, server_id: str, prefix: str, history: str, extra: dict) -> str:
