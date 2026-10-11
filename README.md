@@ -74,7 +74,7 @@ Changing the key signs every current session out. Users, connectors, and vault d
 ## Run
 
 ```bash
-python3 main.py
+uv run main.py
 ```
 
 Open `http://127.0.0.1:5000`. On first start StreamBridge creates its tables and loads the built‑in plugins (including `file-source`).
