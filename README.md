@@ -4,7 +4,7 @@ StreamBridge is a control plane for Change Data Capture on Apache Kafka Connect.
 
 You keep the cluster. Debezium and the other connectors run in your Kafka Connect workers, on a VM or in Kubernetes. StreamBridge stores the connector config, the secret refs, and where that config is deployed. It does not move the rows, and it does not ship Kafka.
 
-![StreamBridge architecture — a control plane that manages and observes your Kafka Connect CDC, with the data flowing through Connect and not through StreamBridge](docs/architecture.svg)
+![StreamBridge control plane above your Kafka Connect cluster. MySQL and PostgreSQL changes move through Debezium, and sink connectors load S3 and Snowflake.](docs/architecture.svg)
 
 ## How a change gets out
 
@@ -74,7 +74,7 @@ Changing the key signs every current session out. Users, connectors, and vault d
 ## Run
 
 ```bash
-python3 main.py
+uv run main.py
 ```
 
 Open `http://127.0.0.1:5000`. On first start StreamBridge creates its tables and loads the built‑in plugins (including `file-source`).

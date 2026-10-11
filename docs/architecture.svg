@@ -1,127 +1,120 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 780" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 508" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title>StreamBridge control plane above your Kafka Connect cluster</title>
   <defs>
-    <marker id="solid" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L8,3 L0,6 Z" fill="#2f6fed"/>
+    <linearGradient id="dbz-g1" x1="19.74" y1="19.73" x2="114.03" y2="114.02" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#91d443"/>
+      <stop offset="1" stop-color="#48bfe0"/>
+    </linearGradient>
+    <linearGradient id="dbz-g2" x1="43.19" y1="-3.72" x2="137.48" y2="90.57" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#91d443"/>
+      <stop offset="1" stop-color="#48bfe0"/>
+    </linearGradient>
+    <linearGradient id="dbz-g3" x1="66.56" y1="-27.09" x2="160.85" y2="67.2" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#91d443"/>
+      <stop offset="1" stop-color="#48bfe0"/>
+    </linearGradient>
+    <linearGradient id="dbz-g4" x1="-3.72" y1="43.18" x2="90.57" y2="137.47" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#91d443"/>
+      <stop offset="1" stop-color="#48bfe0"/>
+    </linearGradient>
+    <linearGradient id="dbz-g5" x1="-27.09" y1="66.55" x2="67.2" y2="160.84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#91d443"/>
+      <stop offset="1" stop-color="#48bfe0"/>
+    </linearGradient>
+    <marker id="blue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0 L8 4 L0 8 Z" fill="#2f6fed"/>
     </marker>
-    <marker id="dash" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L8,3 L0,6 Z" fill="#2e9e4f"/>
+    <marker id="orange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0 L8 4 L0 8 Z" fill="#e07a2f"/>
     </marker>
-    <marker id="dashrev" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M8,0 L0,3 L8,6 Z" fill="#2e9e4f"/>
-    </marker>
+    <symbol id="mysql" viewBox="0 0 24 24">
+      <path fill="#4479A1" d="M16.405 5.501c-.115 0-.193.014-.274.033v.013h.014c.054.104.146.18.214.273.054.107.1.214.154.32l.014-.015c.094-.066.14-.172.14-.333-.04-.047-.046-.094-.08-.14-.04-.067-.126-.1-.18-.153zM5.77 18.695h-.927a50.854 50.854 0 00-.27-4.41h-.008l-1.41 4.41H2.45l-1.4-4.41h-.01a72.892 72.892 0 00-.195 4.41H0c.055-1.966.192-3.81.41-5.53h1.15l1.335 4.064h.008l1.347-4.064h1.095c.242 2.015.384 3.86.428 5.53zm4.017-4.08c-.378 2.045-.876 3.533-1.492 4.46-.482.716-1.01 1.073-1.583 1.073-.153 0-.34-.046-.566-.138v-.494c.11.017.24.026.386.026.268 0 .483-.075.647-.222.197-.18.295-.382.295-.605 0-.155-.077-.47-.23-.944L6.23 14.615h.91l.727 2.36c.164.536.233.91.205 1.123.4-1.064.678-2.227.835-3.483zm12.325 4.08h-2.63v-5.53h.885v4.85h1.745zm-3.32.135l-1.016-.5c.09-.076.177-.158.255-.25.433-.506.648-1.258.648-2.253 0-1.83-.718-2.746-2.155-2.746-.704 0-1.254.232-1.65.697-.43.508-.646 1.256-.646 2.245 0 .972.19 1.686.574 2.14.35.41.877.615 1.583.615.264 0 .506-.033.725-.098l1.325.772.36-.622zM15.5 17.588c-.225-.36-.337-.94-.337-1.736 0-1.393.424-2.09 1.27-2.09.443 0 .77.167.977.5.224.362.336.936.336 1.723 0 1.404-.424 2.108-1.27 2.108-.445 0-.77-.167-.978-.5zm-1.658-.425c0 .47-.172.856-.516 1.156-.344.3-.803.45-1.384.45-.543 0-1.064-.172-1.573-.515l.237-.476c.438.22.833.328 1.19.328.332 0 .593-.073.783-.22a.754.754 0 00.3-.615c0-.33-.23-.61-.648-.845-.388-.213-1.163-.657-1.163-.657-.422-.307-.632-.636-.632-1.177 0-.45.157-.81.47-1.085.315-.278.72-.415 1.22-.415.512 0 .98.136 1.4.41l-.213.476a2.726 2.726 0 00-1.064-.23c-.283 0-.502.068-.654.206a.685.685 0 00-.248.524c0 .328.234.61.666.85.393.215 1.187.67 1.187.67.433.305.648.63.648 1.168zm9.382-5.852c-.535-.014-.95.04-1.297.188-.1.04-.26.04-.274.167.055.053.063.14.11.214.08.134.218.313.346.407.14.11.28.216.427.31.26.16.555.255.81.416.145.094.293.213.44.313.073.05.12.14.214.172v-.02c-.046-.06-.06-.147-.105-.214-.067-.067-.134-.127-.2-.193a3.223 3.223 0 00-.695-.675c-.214-.146-.682-.35-.77-.595l-.013-.014c.146-.013.32-.066.46-.106.227-.06.435-.047.67-.106.106-.027.213-.06.32-.094v-.06c-.12-.12-.21-.283-.334-.395a8.867 8.867 0 00-1.104-.823c-.21-.134-.476-.22-.697-.334-.08-.04-.214-.06-.26-.127-.12-.146-.19-.34-.275-.514a17.69 17.69 0 01-.547-1.163c-.12-.262-.193-.523-.34-.763-.69-1.137-1.437-1.826-2.586-2.5-.247-.14-.543-.2-.856-.274-.167-.008-.334-.02-.5-.027-.11-.047-.216-.174-.31-.235-.38-.24-1.364-.76-1.644-.072-.18.434.267.862.422 1.082.115.153.26.328.34.5.047.116.06.235.107.356.106.294.207.622.347.897.073.14.153.287.247.413.054.073.146.107.167.227-.094.136-.1.334-.154.5-.24.757-.146 1.693.194 2.25.107.166.362.534.703.393.3-.12.234-.5.32-.835.02-.08.007-.133.048-.187v.015c.094.188.188.367.274.555.206.328.566.668.867.895.16.12.287.328.487.402v-.02h-.015c-.043-.058-.1-.086-.154-.133a3.445 3.445 0 01-.35-.4 8.76 8.76 0 01-.747-1.218c-.11-.21-.202-.436-.29-.643-.04-.08-.04-.2-.107-.24-.1.146-.247.273-.32.453-.127.288-.14.642-.188 1.01-.027.007-.014 0-.027.014-.214-.052-.287-.274-.367-.46-.2-.475-.233-1.238-.06-1.785.047-.14.247-.582.167-.716-.042-.127-.174-.2-.247-.303a2.478 2.478 0 01-.24-.427c-.16-.374-.24-.788-.414-1.162-.08-.173-.22-.354-.334-.513-.127-.18-.267-.307-.368-.52-.033-.073-.08-.194-.027-.274.014-.054.042-.075.094-.09.088-.072.335.022.422.062.247.1.455.194.662.334.094.066.195.193.315.226h.14c.214.047.455.014.655.073.355.114.675.28.962.46a5.953 5.953 0 012.085 2.286c.08.154.115.295.188.455.14.33.313.663.455.982.14.315.275.636.476.897.1.14.502.213.682.286.133.06.34.115.46.188.23.14.454.3.67.454.11.076.443.243.463.378z"/>
+    </symbol>
+    <symbol id="postgres" viewBox="0 0 24 24">
+      <path fill="#4169E1" d="M23.5594 14.7228a.5269.5269 0 0 0-.0563-.1191c-.139-.2632-.4768-.3418-1.0074-.2321-1.6533.3411-2.2935.1312-2.5256-.0191 1.342-2.0482 2.445-4.522 3.0411-6.8297.2714-1.0507.7982-3.5237.1222-4.7316a1.5641 1.5641 0 0 0-.1509-.235C21.6931.9086 19.8007.0248 17.5099.0005c-1.4947-.0158-2.7705.3461-3.1161.4794a9.449 9.449 0 0 0-.5159-.0816 8.044 8.044 0 0 0-1.3114-.1278c-1.1822-.0184-2.2038.2642-3.0498.8406-.8573-.3211-4.7888-1.645-7.2219.0788C.9359 2.1526.3086 3.8733.4302 6.3043c.0409.818.5069 3.334 1.2423 5.7436.4598 1.5065.9387 2.7019 1.4334 3.582.553.9942 1.1259 1.5933 1.7143 1.7895.4474.1491 1.1327.1441 1.8581-.7279.8012-.9635 1.5903-1.8258 1.9446-2.2069.4351.2355.9064.3625 1.39.3772a.0569.0569 0 0 0 .0004.0041 11.0312 11.0312 0 0 0-.2472.3054c-.3389.4302-.4094.5197-1.5002.7443-.3102.064-1.1344.2339-1.1464.8115-.0025.1224.0329.2309.0919.3268.2269.4231.9216.6097 1.015.6331 1.3345.3335 2.5044.092 3.3714-.6787-.017 2.231.0775 4.4174.3454 5.0874.2212.5529.7618 1.9045 2.4692 1.9043.2505 0 .5263-.0291.8296-.0941 1.7819-.3821 2.5557-1.1696 2.855-2.9059.1503-.8707.4016-2.8753.5388-4.1012.0169-.0703.0357-.1207.057-.1362.0007-.0005.0697-.0471.4272.0307a.3673.3673 0 0 0 .0443.0068l.2539.0223.0149.001c.8468.0384 1.9114-.1426 2.5312-.4308.6438-.2988 1.8057-1.0323 1.5951-1.6698zM2.371 11.8765c-.7435-2.4358-1.1779-4.8851-1.2123-5.5719-.1086-2.1714.4171-3.6829 1.5623-4.4927 1.8367-1.2986 4.8398-.5408 6.108-.13-.0032.0032-.0066.0061-.0098.0094-2.0238 2.044-1.9758 5.536-1.9708 5.7495-.0002.0823.0066.1989.0162.3593.0348.5873.0996 1.6804-.0735 2.9184-.1609 1.1504.1937 2.2764.9728 3.0892.0806.0841.1648.1631.2518.2374-.3468.3714-1.1004 1.1926-1.9025 2.1576-.5677.6825-.9597.5517-1.0886.5087-.3919-.1307-.813-.5871-1.2381-1.3223-.4796-.839-.9635-2.0317-1.4155-3.5126zm6.0072 5.0871c-.1711-.0428-.3271-.1132-.4322-.1772.0889-.0394.2374-.0902.4833-.1409 1.2833-.2641 1.4815-.4506 1.9143-1.0002.0992-.126.2116-.2687.3673-.4426a.3549.3549 0 0 0 .0737-.1298c.1708-.1513.2724-.1099.4369-.0417.156.0646.3078.26.3695.4752.0291.1016.0619.2945-.0452.4444-.9043 1.2658-2.2216 1.2494-3.1676 1.0128zm2.094-3.988-.0525.141c-.133.3566-.2567.6881-.3334 1.003-.6674-.0021-1.3168-.2872-1.8105-.8024-.6279-.6551-.9131-1.5664-.7825-2.5004.1828-1.3079.1153-2.4468.079-3.0586-.005-.0857-.0095-.1607-.0122-.2199.2957-.2621 1.6659-.9962 2.6429-.7724.4459.1022.7176.4057.8305.928.5846 2.7038.0774 3.8307-.3302 4.7363-.084.1866-.1633.3629-.2311.5454zm7.3637 4.5725c-.0169.1768-.0358.376-.0618.5959l-.146.4383a.3547.3547 0 0 0-.0182.1077c-.0059.4747-.054.6489-.115.8693-.0634.2292-.1353.4891-.1794 1.0575-.11 1.4143-.8782 2.2267-2.4172 2.5565-1.5155.3251-1.7843-.4968-2.0212-1.2217a6.5824 6.5824 0 0 0-.0769-.2266c-.2154-.5858-.1911-1.4119-.1574-2.5551.0165-.5612-.0249-1.9013-.3302-2.6462.0044-.2932.0106-.5909.019-.8918a.3529.3529 0 0 0-.0153-.1126 1.4927 1.4927 0 0 0-.0439-.208c-.1226-.4283-.4213-.7866-.7797-.9351-.1424-.059-.4038-.1672-.7178-.0869.067-.276.1831-.5875.309-.9249l.0529-.142c.0595-.16.134-.3257.213-.5012.4265-.9476 1.0106-2.2453.3766-5.1772-.2374-1.0981-1.0304-1.6343-2.2324-1.5098-.7207.0746-1.3799.3654-1.7088.5321a5.6716 5.6716 0 0 0-.1958.1041c.0918-1.1064.4386-3.1741 1.7357-4.4823a4.0306 4.0306 0 0 1 .3033-.276.3532.3532 0 0 0 .1447-.0644c.7524-.5706 1.6945-.8506 2.802-.8325.4091.0067.8017.0339 1.1742.081 1.939.3544 3.2439 1.4468 4.0359 2.3827.8143.9623 1.2552 1.9315 1.4312 2.4543-1.3232-.1346-2.2234.1268-2.6797.779-.9926 1.4189.543 4.1729 1.2811 5.4964.1353.2426.2522.4522.2889.5413.2403.5825.5515.9713.7787 1.2552.0696.087.1372.1714.1885.245-.4008.1155-1.1208.3825-1.0552 1.717-.0123.1563-.0423.4469-.0834.8148-.0461.2077-.0702.4603-.0994.7662zm.8905-1.6211c-.0405-.8316.2691-.9185.5967-1.0105a2.8566 2.8566 0 0 0 .135-.0406 1.202 1.202 0 0 0 .1342.103c.5703.3765 1.5823.4213 3.0068.1344-.2016.1769-.5189.3994-.9533.6011-.4098.1903-1.0957.333-1.7473.3636-.7197.0336-1.0859-.0807-1.1721-.151zm.5695-9.2712c-.0059.3508-.0542.6692-.1054 1.0017-.055.3576-.112.7274-.1264 1.1762-.0142.4368.0404.8909.0932 1.3301.1066.887.216 1.8003-.2075 2.7014a3.5272 3.5272 0 0 1-.1876-.3856c-.0527-.1276-.1669-.3326-.3251-.6162-.6156-1.1041-2.0574-3.6896-1.3193-4.7446.3795-.5427 1.3408-.5661 2.1781-.463zm.2284 7.0137a12.3762 12.3762 0 0 0-.0853-.1074l-.0355-.0444c.7262-1.1995.5842-2.3862.4578-3.4385-.0519-.4318-.1009-.8396-.0885-1.2226.0129-.4061.0666-.7543.1185-1.0911.0639-.415.1288-.8443.1109-1.3505.0134-.0531.0188-.1158.0118-.1902-.0457-.4855-.5999-1.938-1.7294-3.253-.6076-.7073-1.4896-1.4972-2.6889-2.0395.5251-.1066 1.2328-.2035 2.0244-.1859 2.0515.0456 3.6746.8135 4.8242 2.2824a.908.908 0 0 1 .0667.1002c.7231 1.3556-.2762 6.2751-2.9867 10.5405zm-8.8166-6.1162c-.025.1794-.3089.4225-.6211.4225a.5821.5821 0 0 1-.0809-.0056c-.1873-.026-.3765-.144-.5059-.3156-.0458-.0605-.1203-.178-.1055-.2844.0055-.0401.0261-.0985.0925-.1488.1182-.0894.3518-.1226.6096-.0867.3163.0441.6426.1938.6113.4186zm7.9305-.4114c.0111.0792-.049.201-.1531.3102-.0683.0717-.212.1961-.4079.2232a.5456.5456 0 0 1-.075.0052c-.2935 0-.5414-.2344-.5607-.3717-.024-.1765.2641-.3106.5611-.352.297-.0414.6111.0088.6356.1851z"/>
+    </symbol>
+    <symbol id="snowflake" viewBox="0 0 24 24">
+      <path fill="#29B5E8" d="M24 3.459c0 .646-.418 1.18-1.141 1.18-.723 0-1.142-.534-1.142-1.18 0-.647.419-1.18 1.142-1.18.723 0 1.141.533 1.141 1.18zm-.228 0c0-.533-.38-.951-.913-.951s-.913.38-.913.95c0 .533.38.952.913.952.57 0 .913-.419.913-.951zm-1.37-.533h.495c.266 0 .456.152.456.38 0 .153-.076.229-.19.305l.19.266v.038h-.266l-.19-.266h-.229v.266h-.266zm.495.228h-.229v.267h.229c.114 0 .152-.038.152-.114.038-.077-.038-.153-.152-.153zM7.602 12.4c.038-.151.076-.304.076-.456 0-.114-.038-.228-.038-.342-.114-.343-.304-.647-.646-.838l-4.87-2.777c-.685-.38-1.56-.152-1.94.533-.381.685-.153 1.56.532 1.94l2.701 1.56-2.701 1.56c-.685.38-.913 1.256-.533 1.94.38.685 1.256.914 1.94.533l4.832-2.777c.343-.267.571-.533.647-.876zm1.332 2.626c-.266-.038-.57.038-.837.19l-4.832 2.777c-.685.38-.913 1.256-.532 1.94.38.686 1.255.914 1.94.533l2.701-1.56v3.12c0 .8.647 1.408 1.446 1.408.799 0 1.407-.647 1.407-1.408v-5.592c0-.761-.57-1.37-1.293-1.408zm4.946-6.088c.266.038.57-.038.837-.19l4.832-2.777c.685-.38.913-1.256.532-1.94-.38-.686-1.255-.914-1.94-.533l-2.701 1.56V1.975c0-.799-.647-1.408-1.446-1.408-.799 0-1.446.609-1.446 1.408V7.53c0 .76.609 1.37 1.332 1.407zM3.265 5.97l4.832 2.777c.266.152.533.19.837.19.723-.038 1.331-.684 1.331-1.407V1.975c0-.799-.646-1.408-1.407-1.408-.799 0-1.446.647-1.446 1.408v3.12l-2.701-1.56c-.685-.38-1.56-.152-1.94.533-.419.646-.19 1.521.494 1.902zm9.093 6.011a.412.412 0 00-.114-.266l-.57-.571a.346.346 0 00-.267-.114.412.412 0 00-.266.114l-.571.57a.411.411 0 00-.114.267c0 .076.038.19.114.267l.57.57a.345.345 0 00.267.114c.076 0 .19-.038.266-.114l.571-.57a.412.412 0 00.114-.267zm1.598.533L11.94 14.53c-.039.038-.153.114-.229.114h-.608a.411.411 0 01-.267-.114L8.82 12.514a.408.408 0 01-.076-.229v-.608c0-.076.038-.19.114-.267l2.016-2.016a.41.41 0 01.267-.114h.608a.41.41 0 01.267.114l2.016 2.016a.347.347 0 01.114.267v.608c-.076.077-.114.19-.19.229zm5.593 5.44l-4.832-2.777c-.266-.152-.57-.19-.837-.152-.723.038-1.332.684-1.332 1.408v5.554c0 .8.647 1.408 1.408 1.408.799 0 1.446-.647 1.446-1.408v-3.12l2.7 1.56c.686.38 1.561.152 1.941-.533.419-.646.19-1.521-.494-1.94zm2.549-7.533l-2.701 1.56 2.7 1.56c.686.38.914 1.256.533 1.94-.38.685-1.255.913-1.94.533l-4.832-2.778a1.644 1.644 0 01-.647-.798c-.037-.153-.076-.305-.076-.457 0-.114.039-.228.039-.342.114-.343.342-.647.646-.837l4.832-2.778c.685-.38 1.56-.152 1.94.533.457.609.19 1.484-.494 1.864"/>
+    </symbol>
+    <symbol id="s3" viewBox="0 0 48 48">
+      <path d="M14 16 Q24 3 34 16" fill="none" stroke="#c2410c" stroke-width="2.4" stroke-linecap="round"/>
+      <path fill="#f4a261" d="M9 17 L15 40 Q24 45 33 40 L39 17 Z"/>
+      <ellipse cx="24" cy="40" rx="9" ry="3" fill="#e07a2f"/>
+      <ellipse cx="24" cy="17" rx="15" ry="5.2" fill="#e85d04"/>
+      <ellipse cx="24" cy="17" rx="10" ry="2.6" fill="#9a3412"/>
+    </symbol>
+    <symbol id="debezium" viewBox="0 0 132 132">
+      <path fill="url(#dbz-g1)" d="M93.79,114.29a16.65,16.65,0,0,0,16.63,16.63h20.53V110.39a16.65,16.65,0,0,0-16.63-16.63h-3.91A26.39,26.39,0,0,1,84,67.4V63.51A16.65,16.65,0,0,0,67.41,46.89h-3.9A26.39,26.39,0,0,1,37.16,20.52h0V16.62A16.65,16.65,0,0,0,20.53,0H0V20.52A16.65,16.65,0,0,0,16.63,37.15h3.91A26.39,26.39,0,0,1,46.9,63.51V67.4A16.65,16.65,0,0,0,63.53,84h3.9a26.39,26.39,0,0,1,26.36,26.36h0Z"/>
+      <path fill="url(#dbz-g2)" d="M130.94,63.51a16.65,16.65,0,0,0-16.63-16.63h-3.91A26.39,26.39,0,0,1,84,20.52V16.62A16.65,16.65,0,0,0,67.41,0H46.9V20.75A16.64,16.64,0,0,0,63.52,37.15h3.91A26.39,26.39,0,0,1,93.79,63.51h0V67.4A16.65,16.65,0,0,0,110.36,84h20.58Z"/>
+      <path fill="url(#dbz-g3)" d="M130.94,16.49A16.63,16.63,0,0,0,115,0H93.47V20.7a16.64,16.64,0,0,0,16.62,16.44h20.85Z"/>
+      <path fill="url(#dbz-g4)" d="M0,67.44A16.65,16.65,0,0,0,16.64,84.06h3.91a26.39,26.39,0,0,1,26.36,26.36v3.89a16.65,16.65,0,0,0,16.63,16.63H84V110.19A16.64,16.64,0,0,0,67.43,93.8H63.53A26.39,26.39,0,0,1,37.16,67.44h0V63.54A16.65,16.65,0,0,0,20.59,46.91H0Z"/>
+      <path fill="url(#dbz-g5)" d="M0,114.45a16.63,16.63,0,0,0,16,16.5H37.48V110.24A16.64,16.64,0,0,0,20.86,93.8H0Z"/>
+    </symbol>
+    <symbol id="mark" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="8" fill="#ff6b35"/>
+      <circle cx="5.2" cy="16" r="2.15" fill="#fff"/>
+      <path d="M8.2 16Q11.5 6 13.4 16Q15.5 26 18.2 16" fill="none" stroke="#fff" stroke-width="2.05" stroke-linecap="round"/>
+      <path d="M20.2 10.5 28.2 16 20.2 21.5" fill="none" stroke="#fff" stroke-width="2.45" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
   </defs>
 
-  <rect x="0" y="0" width="1000" height="780" fill="#ffffff"/>
-  <text x="500" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#14213d">StreamBridge — Control Plane for Kafka-Connect CDC</text>
+  <rect width="1080" height="508" fill="#ffffff"/>
 
-  <!-- ===================== DATA-PLANE ARROWS (dashed, behind boxes) ===================== -->
-  <!-- Sources -> Kafka Connect (CDC) : left corridor x~305 -->
-  <path d="M250,185 C305,230 305,470 300,555" fill="none" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)" opacity="0.85"/>
-  <text x="318" y="330" font-size="12.5" fill="#2e7d43" font-weight="600">CDC</text>
-  <!-- Kafka Connect <-> Schema Registry (schemas) -->
-  <path d="M150,560 L150,445" fill="none" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)" marker-start="url(#dashrev)"/>
-  <text x="160" y="508" font-size="12.5" fill="#2e7d43" font-weight="600">schemas</text>
-  <!-- Kafka Connect -> Destinations (load) : bottom lane -->
-  <path d="M345,650 L675,650" fill="none" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)"/>
-  <text x="500" y="640" text-anchor="middle" font-size="12.5" fill="#2e7d43" font-weight="600">load</text>
+  <rect x="292" y="16" width="496" height="92" rx="14" fill="#f5c542" fill-opacity="0.45" stroke="#e0a106" stroke-width="1.5"/>
+  <use href="#mark" x="430" y="40" width="36" height="36"/>
+  <text x="478" y="56" fill="#14213d" font-size="22" font-weight="700">StreamBridge</text>
+  <text x="478" y="80" fill="#7a4e00" font-size="15">Control plane</text>
 
-  <!-- ===================== MANAGEMENT ARROWS (solid, from hub) ===================== -->
-  <!-- hub -> Sources -->
-  <path d="M362,312 L280,170" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
-  <text x="300" y="250" font-size="12.5" fill="#1f4fb0" font-weight="600">manage</text>
-  <!-- hub -> Schema Registry -->
-  <path d="M340,370 L258,372" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
-  <text x="270" y="356" font-size="12.5" fill="#1f4fb0" font-weight="600">read</text>
-  <!-- hub -> Kafka Connect -->
-  <path d="M368,452 L300,556" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
-  <text x="300" y="512" font-size="12.5" fill="#1f4fb0" font-weight="600">deploy + status</text>
-  <!-- hub -> Destinations -->
-  <path d="M636,452 L706,556" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
-  <text x="648" y="512" font-size="12.5" fill="#1f4fb0" font-weight="600">manage</text>
-  <!-- hub -> Alerting -->
-  <path d="M640,318 L724,186" fill="none" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
-  <text x="690" y="258" font-size="12.5" fill="#1f4fb0" font-weight="600">notify</text>
+  <line x1="386.0" y1="108" x2="386.0" y2="166" stroke="#2f6fed" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#blue)"/>
+  <line x1="694.0" y1="108" x2="694.0" y2="166" stroke="#2f6fed" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#blue)"/>
+  <text x="376.0" y="148" text-anchor="end" fill="#1f4fb0" font-size="13" font-weight="600">deploy</text>
+  <text x="704.0" y="148" fill="#1f4fb0" font-size="13" font-weight="600">deploy</text>
 
-  <!-- ===================== CENTER HUB ===================== -->
-  <rect x="350" y="288" width="300" height="192" rx="16" fill="#2f6fed" stroke="#1b3f8f" stroke-width="2"/>
-  <!-- brand mark -->
-  <g transform="translate(476,300) scale(1.45)">
-    <circle cx="5.2" cy="16" r="2.15" fill="#fff"/>
-    <path d="M8.2 16Q11.5 6 13.4 16Q15.5 26 18.2 16" fill="none" stroke="#fff" stroke-width="2.05" stroke-linecap="round"/>
-    <path d="M20.2 10.5 28.2 16 20.2 21.5" fill="none" stroke="#fff" stroke-width="2.45" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-  <text x="500" y="372" text-anchor="middle" font-size="19" font-weight="700" fill="#ffffff">StreamBridge</text>
-  <line x1="384" y1="386" x2="616" y2="386" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1"/>
-  <text x="500" y="408" text-anchor="middle" font-size="12.5" fill="#eaf1ff">Author · validate · deploy</text>
-  <text x="500" y="428" text-anchor="middle" font-size="12.5" fill="#eaf1ff">REST or Strimzi / Kubernetes</text>
-  <text x="500" y="448" text-anchor="middle" font-size="12.5" fill="#eaf1ff">Vaults · RBAC · audit</text>
-  <text x="500" y="468" text-anchor="middle" font-size="12.5" fill="#eaf1ff">Browse topics &amp; schemas · alerts</text>
+  <rect x="34" y="178" width="188" height="228" rx="12" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <rect x="29" y="183" width="188" height="228" rx="12" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <rect x="24" y="188" width="188" height="228" rx="12" fill="#f7f8fa" stroke="#14213d" stroke-width="1.5"/>
+  <use href="#mysql" x="68" y="204" width="100" height="100"/>
+  <use href="#postgres" x="48" y="328" width="40" height="40"/>
+  <text x="100" y="354" fill="#14213d" font-size="15" font-weight="700">PostgreSQL</text>
 
-  <!-- ===================== SOURCES (top-left) ===================== -->
-  <rect x="40" y="56" width="250" height="132" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
-  <g transform="translate(60,74)" fill="none" stroke="#5b6672" stroke-width="2">
-    <ellipse cx="9" cy="4" rx="9" ry="3.4" fill="#dfe4ea"/>
-    <path d="M0,4 V16 a9,3.4 0 0 0 18,0 V4"/>
-    <path d="M0,10 a9,3.4 0 0 0 18,0"/>
-  </g>
-  <text x="90" y="82" font-size="15" font-weight="700" fill="#14213d">Sources · 1..N</text>
-  <text x="60" y="112" font-size="12.5" fill="#3a4350">MySQL · PostgreSQL</text>
-  <text x="60" y="132" font-size="12.5" fill="#3a4350">Oracle · MongoDB · …</text>
-  <text x="60" y="160" font-size="11.5" fill="#79838f">row changes captured by</text>
-  <text x="60" y="176" font-size="11.5" fill="#79838f">Debezium source connectors</text>
+  <line x1="220" y1="302" x2="282" y2="302" stroke="#e07a2f" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#orange)"/>
+  <text x="252.0" y="292" text-anchor="middle" fill="#c2410c" font-size="13" font-weight="600">CDC</text>
 
-  <!-- ===================== SCHEMA REGISTRY (left) ===================== -->
-  <rect x="40" y="300" width="218" height="132" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
-  <g transform="translate(60,318)" stroke="#5b6672" stroke-width="2" fill="#dfe4ea">
-    <rect x="6" y="0" width="10" height="7" rx="1.5"/>
-    <rect x="0" y="18" width="10" height="7" rx="1.5"/>
-    <rect x="13" y="18" width="10" height="7" rx="1.5"/>
-    <path d="M11,7 V12 M4,18 V12 H18 V18" fill="none"/>
-  </g>
-  <text x="92" y="330" font-size="15" font-weight="700" fill="#14213d">Schema Registry</text>
-  <text x="92" y="348" font-size="12" fill="#79838f">1..N</text>
-  <text x="60" y="380" font-size="12.5" fill="#3a4350">Confluent</text>
-  <text x="60" y="400" font-size="12.5" fill="#3a4350">Apicurio</text>
-  <text x="60" y="422" font-size="11.5" fill="#79838f">Avro schemas</text>
+  <rect x="292" y="168" width="496" height="268" rx="14" fill="#f4f7fb" stroke="#14213d" stroke-width="1.5"/>
+  <text x="540.0" y="198" text-anchor="middle" fill="#14213d" font-size="16" font-weight="700">Your Kafka Connect</text>
 
-  <!-- ===================== KAFKA CONNECT + KAFKA (bottom-left, data plane) ===================== -->
-  <rect x="40" y="560" width="305" height="150" rx="12" fill="#e9f9ee" stroke="#2e9e4f" stroke-width="1.8"/>
-  <g transform="translate(60,580)" stroke="#2e7d43" stroke-width="2" fill="none">
-    <circle cx="9" cy="9" r="7"/>
-    <circle cx="9" cy="9" r="2.4" fill="#2e7d43"/>
-    <path d="M9,0 V3 M9,15 V18 M0,9 H3 M15,9 H18 M3,3 l2,2 M15,15 l-2,-2 M15,3 l-2,2 M3,15 l2,-2"/>
-  </g>
-  <text x="90" y="592" font-size="15" font-weight="700" fill="#1c5b32">Kafka Connect + Kafka</text>
-  <text x="60" y="620" font-size="12.5" fill="#28492f">Connect workers · Debezium · sink plugins</text>
-  <text x="60" y="642" font-size="12.5" fill="#28492f">Kafka topics</text>
-  <text x="60" y="672" font-size="11.5" fill="#5b7a63">The data plane — StreamBridge</text>
-  <text x="60" y="688" font-size="11.5" fill="#5b7a63">drives it but is never in the path</text>
+  <rect x="312" y="220" width="148" height="192" rx="12" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <use href="#debezium" x="350" y="240" width="72" height="72"/>
+  <text x="386.0" y="336" text-anchor="middle" fill="#14213d" font-size="14" font-weight="700">Debezium</text>
+  <text x="386.0" y="358" text-anchor="middle" fill="#9a3412" font-size="12">Source connector</text>
 
-  <!-- ===================== DESTINATIONS (bottom-right) ===================== -->
-  <rect x="680" y="560" width="280" height="150" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
-  <g transform="translate(700,582)" stroke="#5b6672" stroke-width="2" fill="#dfe4ea">
-    <path d="M4,14 a5,5 0 0 1 1,-9.8 a6,6 0 0 1 11.5,1.6 a4.2,4.2 0 0 1 -1.2,8.2 Z"/>
-  </g>
-  <text x="730" y="594" font-size="15" font-weight="700" fill="#14213d">Destinations · 1..N</text>
-  <text x="700" y="624" font-size="12.5" fill="#3a4350">Amazon S3 · Snowflake</text>
-  <text x="700" y="644" font-size="12.5" fill="#3a4350">Elasticsearch · Warehouse</text>
-  <text x="700" y="674" font-size="11.5" fill="#79838f">written by sink connectors</text>
+  <rect x="478" y="248" width="132" height="36" rx="8" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <text x="544" y="272" text-anchor="middle" fill="#14213d" font-size="14" font-weight="600">Kafka</text>
+  <rect x="478" y="296" width="132" height="36" rx="8" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <text x="544" y="320" text-anchor="middle" fill="#14213d" font-size="14" font-weight="600">Connect</text>
+  <rect x="478" y="344" width="132" height="36" rx="8" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <text x="544" y="368" text-anchor="middle" fill="#14213d" font-size="14" font-weight="600">Registry</text>
 
-  <!-- ===================== ALERTING (top-right) ===================== -->
-  <rect x="710" y="56" width="250" height="132" rx="12" fill="#f4f6f8" stroke="#9aa4b2" stroke-width="1.5"/>
-  <g transform="translate(730,74)" stroke="#5b6672" stroke-width="2" fill="none">
-    <path d="M2,14 C2,7 5,3 9,3 C13,3 16,7 16,14 Z" fill="#dfe4ea"/>
-    <path d="M7,17 a2,2 0 0 0 4,0"/>
-  </g>
-  <text x="760" y="82" font-size="15" font-weight="700" fill="#14213d">Alerting</text>
-  <text x="730" y="112" font-size="12.5" fill="#3a4350">Slack</text>
-  <text x="730" y="132" font-size="12.5" fill="#3a4350">Google Chat</text>
-  <text x="730" y="160" font-size="11.5" fill="#79838f">connector policy</text>
-  <text x="730" y="176" font-size="11.5" fill="#79838f">notifications</text>
+  <rect x="620" y="220" width="148" height="192" rx="12" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <use href="#debezium" x="658" y="240" width="72" height="72"/>
+  <text x="694.0" y="336" text-anchor="middle" fill="#14213d" font-size="14" font-weight="700">Debezium</text>
+  <text x="694.0" y="358" text-anchor="middle" fill="#1f4fb0" font-size="12">Sink connector</text>
 
-  <!-- ===================== LEGEND ===================== -->
-  <line x1="330" y1="744" x2="372" y2="744" stroke="#2f6fed" stroke-width="2.6" marker-end="url(#solid)"/>
-  <text x="380" y="748" font-size="12.5" fill="#3a4350">StreamBridge manages / observes</text>
-  <line x1="628" y1="744" x2="670" y2="744" stroke="#2e9e4f" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#dash)"/>
-  <text x="678" y="748" font-size="12.5" fill="#3a4350">data flows through Kafka Connect</text>
+  <line x1="796" y1="302" x2="858" y2="302" stroke="#2f6fed" stroke-width="2" marker-end="url(#blue)"/>
+  <text x="828.0" y="292" text-anchor="middle" fill="#1f4fb0" font-size="13" font-weight="600">load</text>
+
+  <rect x="878" y="178" width="188" height="228" rx="12" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <rect x="873" y="183" width="188" height="228" rx="12" fill="#ffffff" stroke="#14213d" stroke-width="1.5"/>
+  <rect x="868" y="188" width="188" height="228" rx="12" fill="#f7f8fa" stroke="#14213d" stroke-width="1.5"/>
+  <use href="#s3" x="888" y="214" width="52" height="52"/>
+  <text x="948" y="246" fill="#14213d" font-size="15" font-weight="700">S3</text>
+  <use href="#snowflake" x="892" y="312" width="40" height="40"/>
+  <text x="944" y="338" fill="#14213d" font-size="15" font-weight="700">Snowflake</text>
+
+  <line x1="300" y1="470" x2="348" y2="470" stroke="#2f6fed" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="356" y="474" fill="#3a4350" font-size="13">Deploy</text>
+  <line x1="430" y1="470" x2="478" y2="470" stroke="#e07a2f" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="486" y="474" fill="#3a4350" font-size="13">CDC through Connect</text>
+  <line x1="680" y1="470" x2="728" y2="470" stroke="#2f6fed" stroke-width="2"/>
+  <text x="736" y="474" fill="#3a4350" font-size="13">Load</text>
 </svg>
