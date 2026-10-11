@@ -191,7 +191,7 @@ Team mode is built deny‑by‑default:
 
 **Personal mode has no gate by design** — run it on `127.0.0.1` and do not expose the port to a network.
 
-Found a security issue? Please report it privately to the maintainers rather than opening a public issue.
+Found a security issue? Report it in private, as described in [SECURITY.md](SECURITY.md). Do not open a public issue.
 
 ## More docs
 

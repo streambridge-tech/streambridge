@@ -1,21 +1,16 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Security fixes go into the latest 0.1.x release. Older tags are not maintained.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| 0.1.x   | yes       |
+| < 0.1   | no        |
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Email [streambridge.de@gmail.com](mailto:streambridge.de@gmail.com). Do not open a public GitHub issue for a security report.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Include the StreamBridge version, what an attacker can reach, and the steps to reproduce. We will reply within 7 days to confirm we received it. If we accept the report, we will work on a fix before any public disclosure. If we decline it, we will say why.
